@@ -23,6 +23,19 @@ type Store struct {
 	rules    map[domain.ID]*domain.AuditRule
 	events   map[domain.ID][]*domain.Event
 	nextEvt  int64
+
+	schedules       map[domain.ID]*domain.Schedule
+	alertRules      map[domain.ID]*domain.AlertRule
+	alertChannels   map[domain.ID]*domain.AlertChannel
+	alertIncidents  map[domain.ID]*domain.AlertIncident
+	alertDeliveries map[domain.ID]*domain.AlertDelivery
+	journeys        map[domain.ID]*domain.Journey
+	journeyRuns     map[domain.ID]*domain.JourneyRun
+	privacyProfiles map[domain.ID]*domain.PrivacyProfile
+	privacyBatches  map[domain.ID]*domain.PrivacyBatch
+	privacyEvals    map[domain.ID]*domain.PrivacyEvaluation
+	reports         map[domain.ID]*domain.Report
+	reportSchedules map[domain.ID]*domain.ReportSchedule
 }
 
 // New returns an empty store.
@@ -36,6 +49,19 @@ func New() *Store {
 		findings: map[domain.ID]*domain.Finding{},
 		rules:    map[domain.ID]*domain.AuditRule{},
 		events:   map[domain.ID][]*domain.Event{},
+
+		schedules:       map[domain.ID]*domain.Schedule{},
+		alertRules:      map[domain.ID]*domain.AlertRule{},
+		alertChannels:   map[domain.ID]*domain.AlertChannel{},
+		alertIncidents:  map[domain.ID]*domain.AlertIncident{},
+		alertDeliveries: map[domain.ID]*domain.AlertDelivery{},
+		journeys:        map[domain.ID]*domain.Journey{},
+		journeyRuns:     map[domain.ID]*domain.JourneyRun{},
+		privacyProfiles: map[domain.ID]*domain.PrivacyProfile{},
+		privacyBatches:  map[domain.ID]*domain.PrivacyBatch{},
+		privacyEvals:    map[domain.ID]*domain.PrivacyEvaluation{},
+		reports:         map[domain.ID]*domain.Report{},
+		reportSchedules: map[domain.ID]*domain.ReportSchedule{},
 	}
 }
 

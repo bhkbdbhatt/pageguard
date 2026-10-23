@@ -1,6 +1,9 @@
 package domain
 
-import "time"
+import (
+	"encoding/json"
+	"time"
+)
 
 // Project is the top-level tenant boundary. Scans, journeys and alert rules
 // all belong to exactly one project.
@@ -142,10 +145,17 @@ type Page struct {
 
 // Journey is a scripted, multi-step user flow used by Module 4.
 type Journey struct {
-	ID        ID            `json:"id"`
-	ProjectID ID            `json:"projectId"`
-	Name      string        `json:"name"`
-	Steps     []JourneyStep `json:"steps"`
+	ID          ID              `json:"id"`
+	ProjectID   ID              `json:"projectId"`
+	Name        string          `json:"name"`
+	Description string          `json:"description,omitempty"`
+	Owner       string          `json:"owner,omitempty"`
+	BaseURL     string          `json:"baseUrl,omitempty"`
+	Enabled     bool            `json:"enabled"`
+	// Definition is the canonical journey.Journey document.
+	Definition json.RawMessage `json:"definition,omitempty"`
+	// Steps is retained for legacy records; new writes populate Definition.
+	Steps     []JourneyStep `json:"steps,omitempty"`
 	CreatedAt time.Time     `json:"createdAt"`
 	UpdatedAt time.Time     `json:"updatedAt"`
 }
@@ -162,14 +172,25 @@ type JourneyStep struct {
 
 // AlertRule describes a condition over findings/run state that triggers events.
 type AlertRule struct {
-	ID        ID             `json:"id"`
-	ProjectID ID             `json:"projectId"`
-	Name      string         `json:"name"`
-	Enabled   bool           `json:"enabled"`
+	ID       ID     `json:"id"`
+	ProjectID ID    `json:"projectId"`
+	Name     string `json:"name"`
+	Enabled  bool   `json:"enabled"`
+	Severity Severity `json:"severity"`
+	// Condition is the structured predicate evaluated after a run.
 	Condition AlertCondition `json:"condition"`
-	Channels  []string       `json:"channels"` // channel plugin IDs, e.g. "slack", "email"
-	CreatedAt time.Time      `json:"createdAt"`
-	UpdatedAt time.Time      `json:"updatedAt"`
+	// ConditionText is a human-readable summary for the UI.
+	ConditionText string   `json:"conditionText,omitempty"`
+	// Channels is the legacy list of channel kinds (slack, email, ...).
+	Channels []string `json:"channels,omitempty"`
+	// ChannelIDs is the authoritative list of configured destinations.
+	ChannelIDs []ID `json:"channelIds"`
+
+	LastTriggeredAt *time.Time `json:"lastTriggeredAt,omitempty"`
+	TriggerCount    int        `json:"triggerCount"`
+
+	CreatedAt time.Time `json:"createdAt"`
+	UpdatedAt time.Time `json:"updatedAt"`
 }
 
 // AlertCondition is a small, serialisable predicate evaluated after a run.
