@@ -27,7 +27,30 @@ type IconName =
   | "filter"
   | "menu"
   | "copy"
-  | "terminal";
+  | "terminal"
+  | "calendar"
+  | "bell"
+  | "route"
+  | "folder"
+  | "database"
+  | "key"
+  | "mail"
+  | "message"
+  | "webhook"
+  | "pause"
+  | "layers"
+  | "list"
+  | "check-circle"
+  | "x-circle"
+  | "info"
+  | "lock"
+  | "drag"
+  | "chevron-right"
+  | "arrow-up"
+  | "arrow-down"
+  | "spark"
+  | "scale"
+  | "settings";
 
 const paths: Record<IconName, React.ReactNode> = {
   grid: (
@@ -179,6 +202,149 @@ const paths: Record<IconName, React.ReactNode> = {
     <>
       <polyline points="4 17 10 11 4 5" />
       <line x1="12" x2="20" y1="19" y2="19" />
+    </>
+  ),
+  calendar: (
+    <>
+      <rect x="3" y="5" width="18" height="16" rx="2" />
+      <path d="M8 3v4M16 3v4M3 10h18" />
+    </>
+  ),
+  bell: (
+    <>
+      <path d="M18 8a6 6 0 1 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9" />
+      <path d="M10 21h4" />
+    </>
+  ),
+  route: (
+    <>
+      <circle cx="6" cy="6" r="2" />
+      <circle cx="18" cy="18" r="2" />
+      <path d="M8 6h6a4 4 0 0 1 0 8h-4a4 4 0 0 0 0 8h6" />
+    </>
+  ),
+  folder: (
+    <>
+      <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Z" />
+    </>
+  ),
+  database: (
+    <>
+      <ellipse cx="12" cy="5" rx="8" ry="3" />
+      <path d="M4 5v6c0 1.7 3.6 3 8 3s8-1.3 8-3V5" />
+      <path d="M4 11v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6" />
+    </>
+  ),
+  key: (
+    <>
+      <circle cx="8" cy="15" r="4" />
+      <path d="m11 12 8-8" />
+      <path d="m17 6 2 2M14 9l2 2" />
+    </>
+  ),
+  mail: (
+    <>
+      <rect x="3" y="5" width="18" height="14" rx="2" />
+      <path d="m3 7 9 6 9-6" />
+    </>
+  ),
+  message: (
+    <>
+      <path d="M21 12a8 8 0 0 1-8 8H7l-4 3v-7a8 8 0 0 1 8-8h2a8 8 0 0 1 8 4Z" />
+    </>
+  ),
+  webhook: (
+    <>
+      <circle cx="6" cy="17" r="2.5" />
+      <circle cx="18" cy="17" r="2.5" />
+      <circle cx="12" cy="6" r="2.5" />
+      <path d="M10 8 7 14M14 8l3 6M8.5 17h7" />
+    </>
+  ),
+  pause: (
+    <>
+      <path d="M9 5v14M15 5v14" />
+    </>
+  ),
+  layers: (
+    <>
+      <path d="m12 3 9 5-9 5-9-5 9-5Z" />
+      <path d="m3 13 9 5 9-5" />
+      <path d="m3 17 9 5 9-5" />
+    </>
+  ),
+  list: (
+    <>
+      <path d="M8 6h13M8 12h13M8 18h13" />
+      <circle cx="3.5" cy="6" r=".6" fill="currentColor" />
+      <circle cx="3.5" cy="12" r=".6" fill="currentColor" />
+      <circle cx="3.5" cy="18" r=".6" fill="currentColor" />
+    </>
+  ),
+  "check-circle": (
+    <>
+      <circle cx="12" cy="12" r="9" />
+      <path d="m8 12 3 3 5-6" />
+    </>
+  ),
+  "x-circle": (
+    <>
+      <circle cx="12" cy="12" r="9" />
+      <path d="m9 9 6 6M15 9l-6 6" />
+    </>
+  ),
+  info: (
+    <>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 11v5" />
+      <circle cx="12" cy="8" r=".6" fill="currentColor" />
+    </>
+  ),
+  lock: (
+    <>
+      <rect x="4" y="10" width="16" height="11" rx="2" />
+      <path d="M8 10V7a4 4 0 0 1 8 0v3" />
+    </>
+  ),
+  drag: (
+    <>
+      <circle cx="9" cy="6" r=".7" fill="currentColor" />
+      <circle cx="15" cy="6" r=".7" fill="currentColor" />
+      <circle cx="9" cy="12" r=".7" fill="currentColor" />
+      <circle cx="15" cy="12" r=".7" fill="currentColor" />
+      <circle cx="9" cy="18" r=".7" fill="currentColor" />
+      <circle cx="15" cy="18" r=".7" fill="currentColor" />
+    </>
+  ),
+  "chevron-right": <path d="m9 6 6 6-6 6" />,
+  "arrow-up": (
+    <>
+      <path d="M12 20V4" />
+      <path d="m6 10 6-6 6 6" />
+    </>
+  ),
+  "arrow-down": (
+    <>
+      <path d="M12 4v16" />
+      <path d="m6 14 6 6 6-6" />
+    </>
+  ),
+  spark: (
+    <>
+      <path d="M12 3v4M12 17v4M3 12h4M17 12h4" />
+      <path d="m6.3 6.3 2.8 2.8M14.9 14.9l2.8 2.8M17.7 6.3l-2.8 2.8M9.1 14.9l-2.8 2.8" />
+    </>
+  ),
+  scale: (
+    <>
+      <path d="M12 3v18M6 21h12M5 7h14" />
+      <path d="m5 7-3 7h6L5 7ZM19 7l-3 7h6l-3-7Z" />
+    </>
+  ),
+  settings: (
+    <>
+      <circle cx="12" cy="12" r="3" />
+      <path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-2.8 2.8-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6v.2h-4v-.2a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1L4.2 17l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.6-1H2.8v-4H3a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9L4.2 7 7 4.2l.1.1a1.7 1.7 0 0 0 1.9.3 1.7 1.7 0 0 0 1-1.6v-.2h4V3a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1L19.8 7l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.6 1h.2v4H21a1.7 1.7 0 0 0-1.6 1Z" />
     </>
   ),
 } as Record<IconName, React.ReactNode>;

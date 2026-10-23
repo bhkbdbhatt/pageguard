@@ -61,3 +61,27 @@ export function hostOf(raw?: string): string {
     return raw;
   }
 }
+
+export function pluralize(count: number, singular: string, plural = `${singular}s`): string {
+  return `${formatNumber(count)} ${count === 1 ? singular : plural}`;
+}
+
+export function titleCase(value: string): string {
+  return value
+    .split(/[\s_-]+/)
+    .filter(Boolean)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+}
+
+export function cronLabel(cron: string): string {
+  const presets: Record<string, string> = {
+    "*/15 * * * *": "Every 15 minutes",
+    "0 * * * *": "Hourly",
+    "0 6 * * *": "Daily · 06:00",
+    "0 6 * * 1": "Weekly · Mon 06:00",
+    "0 2 1 * *": "Monthly · 1st 02:00",
+    "30 8 * * 1-5": "Weekdays · 08:30",
+  };
+  return presets[cron] ?? cron;
+}
