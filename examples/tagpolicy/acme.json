@@ -1,0 +1,100 @@
+{
+  "version": 1,
+  "name": "Acme tag policy",
+  "description": "Baseline martech governance for acme.com",
+  "settings": {
+    "unexpected_tags": "info",
+    "duplicate_tags": "medium",
+    "unexpected_cookies": "info",
+    "max_occurrences": 1
+  },
+  "must_exist": [
+    {
+      "id": "gtm",
+      "description": "Google Tag Manager container",
+      "severity": "high",
+      "target": "tag",
+      "match": { "tag": "google-tag-manager" }
+    },
+    {
+      "id": "analytics-tag",
+      "severity": "critical",
+      "target": "tag",
+      "match": { "category": "analytics" }
+    },
+    {
+      "id": "gtag-script",
+      "target": "request",
+      "match": { "url_pattern": "googletagmanager\\.com/gtag/js" }
+    },
+    {
+      "id": "purchase-event",
+      "target": "event",
+      "match": { "event": "purchase" }
+    },
+    {
+      "id": "session-cookie",
+      "severity": "high",
+      "target": "cookie",
+      "match": { "name": "sid", "domain": "acme.com" },
+      "attributes": {
+        "secure": true,
+        "httpOnly": true,
+        "sameSite": ["Lax", "Strict"],
+        "category": "functional"
+      }
+    }
+  ],
+  "must_not_exist": [
+    {
+      "id": "no-advertising",
+      "severity": "high",
+      "target": "tag",
+      "match": { "category": "advertising" }
+    },
+    {
+      "id": "no-legacy-cookie",
+      "target": "cookie",
+      "match": { "name": "flashsession" }
+    }
+  ],
+  "value_rules": [
+    {
+      "id": "page-type",
+      "severity": "high",
+      "variable": "page.type",
+      "type": "string",
+      "enum": ["home", "product", "category", "checkout"],
+      "required": true
+    },
+    {
+      "id": "cart-total",
+      "severity": "high",
+      "variable": "cart.total",
+      "type": "number",
+      "min": 0,
+      "max": 1000000,
+      "required_if_event": "purchase"
+    },
+    {
+      "id": "currency-code",
+      "variable": "cart.currency",
+      "type": "string",
+      "pattern": "^[A-Z]{3}$",
+      "when_event": "purchase"
+    },
+    {
+      "id": "consent-analytics",
+      "variable": "consent.analytics",
+      "type": "boolean",
+      "required": true
+    }
+  ],
+  "consent_requirements": {
+    "require_cmp": true,
+    "cmp_tags": ["onetrust", "cookiebot", "usercentrics", "trustarc"],
+    "gated_categories": ["advertising", "social"],
+    "gated_cookie_categories": ["marketing"],
+    "severity": "critical"
+  }
+}

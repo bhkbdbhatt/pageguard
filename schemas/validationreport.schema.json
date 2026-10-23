@@ -1,0 +1,68 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pageguard.dev/schemas/validationreport.schema.json",
+  "title": "Pageguard ValidationReport",
+  "description": "The result of validating one ScanResult against one TagPolicy: an aggregate summary plus a pass/fail result per rule.",
+  "type": "object",
+  "required": ["schemaVersion", "policyName", "url", "generatedAt", "passed", "summary", "results"],
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "description": "ValidationReport schema version; a change is a breaking change."
+    },
+    "policyName": { "type": "string" },
+    "runId": { "type": "string" },
+    "pageId": { "type": "string" },
+    "url": { "type": "string", "format": "uri-reference" },
+    "finalUrl": { "type": "string", "format": "uri-reference" },
+    "generatedAt": { "type": "string", "format": "date-time" },
+    "passed": { "type": "boolean" },
+    "summary": { "$ref": "#/$defs/summary" },
+    "results": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/ruleResult" }
+    }
+  },
+  "$defs": {
+    "severity": {
+      "type": "string",
+      "enum": ["info", "low", "medium", "high", "critical"]
+    },
+    "status": {
+      "type": "string",
+      "enum": ["pass", "fail", "skipped"]
+    },
+    "summary": {
+      "type": "object",
+      "required": ["total", "passed", "failed", "skipped", "bySeverity"],
+      "additionalProperties": false,
+      "properties": {
+        "total": { "type": "integer", "minimum": 0 },
+        "passed": { "type": "integer", "minimum": 0 },
+        "failed": { "type": "integer", "minimum": 0 },
+        "skipped": { "type": "integer", "minimum": 0 },
+        "bySeverity": {
+          "type": "object",
+          "additionalProperties": { "type": "integer", "minimum": 0 }
+        }
+      }
+    },
+    "ruleResult": {
+      "type": "object",
+      "required": ["id", "section", "status", "severity", "message"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string" },
+        "section": { "type": "string" },
+        "status": { "$ref": "#/$defs/status" },
+        "severity": { "$ref": "#/$defs/severity" },
+        "message": { "type": "string" },
+        "expected": {},
+        "actual": {},
+        "evidence": { "type": "object" }
+      }
+    }
+  }
+}

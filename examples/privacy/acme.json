@@ -1,0 +1,45 @@
+{
+  "version": 1,
+  "name": "Acme privacy policy",
+  "description": "GDPR / CCPA / ePrivacy compliance baseline for acme.com",
+  "regulations": ["gdpr", "ccpa", "eprivacy"],
+  "cookie_rules": [
+    { "name_pattern": "^_ga", "category": "analytics" },
+    { "name_pattern": "^_gid", "category": "analytics" },
+    { "name_pattern": "^_fbp", "category": "advertising" },
+    { "name_pattern": "(?i)^(sid|session)", "essential": true }
+  ],
+  "subject_rights": [
+    {
+      "id": "access",
+      "name": "Right of access",
+      "url_pattern": "(?i)/(privacy|data)-request"
+    },
+    {
+      "id": "deletion",
+      "name": "Right to erasure",
+      "url_pattern": "(?i)/(delete|erasure)$"
+    }
+  ],
+  "settings": {
+    "consent_states": ["accept_all", "reject_all", "necessary_only", "gpc"],
+    "essential_categories": ["consent"],
+    "essential_cookies": ["csrf_token"],
+    "essential_cookie_patterns": ["^__Host-"],
+    "essential_hosts": ["cdn.acme.com"],
+    "marketing_categories": ["advertising", "social"],
+    "sale_categories": ["advertising"],
+    "cmp_tags": ["onetrust", "cookiebot", "usercentrics"],
+    "opt_out_url_patterns": ["(?i)do-not-sell", "(?i)/opt-out"],
+    "cross_border_hosts": ["example-cdn.net", "adnetwork.io"],
+    "dpia": [
+      {
+        "id": "large-scale-tracking",
+        "description": "large-scale behavioural tracking",
+        "categories": ["advertising", "social"],
+        "min_trackers": 5
+      }
+    ],
+    "pass_threshold": 100
+  }
+}

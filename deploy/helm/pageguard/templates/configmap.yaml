@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "pageguard.fullname" . }}
+  labels:
+    {{- include "pageguard.labels" . | nindent 4 }}
+data:
+  PAGEGUARD_ADDR: {{ .Values.config.addr | quote }}
+  PAGEGUARD_LOG: {{ .Values.config.logLevel | quote }}
+  PAGEGUARD_PLUGINS_DIR: {{ .Values.config.pluginsDir | quote }}
+  PAGEGUARD_BROWSER_CMD: {{ .Values.config.browserCommand | quote }}

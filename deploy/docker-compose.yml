@@ -1,0 +1,54 @@
+# Pageguard single-node stack.
+#
+#   docker compose -f deploy/docker-compose.yml up --build
+#
+# The API is exposed on :8080 and the dashboard on :3000.
+name: pageguard
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: pageguard
+      POSTGRES_PASSWORD: pageguard
+      POSTGRES_DB: pageguard
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      # Migrations run automatically on first boot.
+      - ../migrations:/docker-entrypoint-initdb.d:ro
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pageguard"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  pageguard:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    environment:
+      PAGEGUARD_ADDR: ":8080"
+      PAGEGUARD_PLUGINS_DIR: "/app/plugins"
+      PAGEGUARD_BROWSER_CMD: "node /app/tools/browser-renderer/index.mjs"
+      DATABASE_URL: "postgres://pageguard:pageguard@postgres:5432/pageguard?sslmode=disable"
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  web:
+    build:
+      context: ../web
+      dockerfile: Dockerfile
+    environment:
+      NEXT_PUBLIC_API_BASE: "http://localhost:8080"
+    ports:
+      - "3000:3000"
+    depends_on:
+      - pageguard
+
+volumes:
+  pgdata:

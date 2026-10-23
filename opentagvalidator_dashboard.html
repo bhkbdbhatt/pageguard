@@ -1,0 +1,1366 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OpenTagValidator - Enterprise Tag Governance & Quality Assurance</title>
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            slate: {
+              750: '#1e293b',
+              850: '#0f172a',
+              900: '#0b0f19',
+              950: '#05070c',
+            },
+            brand: {
+              adobe: '#FF0000',
+              gtm: '#4285F4',
+              ga4: '#F9AB00',
+              meta: '#0668E1',
+              onetrust: '#00A88F'
+            }
+          },
+          fontFamily: {
+            mono: ['JetBrains Mono', 'Menlo', 'Monaco', 'Consolas', 'monospace'],
+            sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif']
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <style>
+    /* Custom Scrollbar for High Visual Density */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: #0f172a;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: #334155;
+      border-radius: 3px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: #475569;
+    }
+
+    .pulse-glow {
+      box-shadow: 0 0 15px rgba(16, 185, 129, 0.3);
+    }
+
+    .pulse-glow-red {
+      box-shadow: 0 0 15px rgba(244, 63, 94, 0.3);
+    }
+  </style>
+</head>
+
+<body class="bg-slate-950 text-slate-100 font-sans antialiased min-h-screen flex flex-col overflow-x-hidden">
+
+  <!-- Top Global Navigation Bar -->
+  <header
+    class="bg-slate-900 border-b border-slate-800 sticky top-0 z-40 px-4 py-2.5 flex items-center justify-between">
+    <div class="flex items-center space-x-4">
+      <div class="flex items-center space-x-2.5">
+        <div
+          class="w-8 h-8 rounded-lg bg-gradient-to-tr from-indigo-600 via-cyan-500 to-emerald-400 flex items-center justify-center font-bold text-white shadow-lg">
+          <i data-lucide="shield-check" class="w-5 h-5"></i>
+        </div>
+        <div>
+          <span
+            class="font-bold text-lg tracking-tight bg-gradient-to-r from-white via-slate-200 to-slate-400 bg-clip-text text-transparent">OpenTagValidator</span>
+          <span
+            class="text-[10px] bg-indigo-950 text-indigo-300 font-mono px-1.5 py-0.5 rounded border border-indigo-800/50 ml-1.5 uppercase font-semibold">Enterprise</span>
+        </div>
+      </div>
+
+      <!-- System Status Pill -->
+      <div
+        class="hidden md:flex items-center space-x-2 bg-slate-800/80 px-2.5 py-1 rounded-full border border-slate-700/60 text-xs">
+        <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+        <span class="text-slate-300 font-medium">Headless Fleet: <span class="text-emerald-400">12 Runners
+            Idle</span></span>
+      </div>
+    </div>
+
+    <!-- Active Environment & Global Actions -->
+    <div class="flex items-center space-x-3">
+      <div class="relative">
+        <select id="envSelect"
+          class="bg-slate-800 text-xs font-medium border border-slate-700 text-slate-200 rounded-lg px-3 py-1.5 pr-8 focus:ring-2 focus:ring-indigo-500 focus:outline-none appearance-none cursor-pointer">
+          <option>Production (http://capitalgroup.com/advisor/insights.html)</option>
+          <option>Staging (staging.shop.example.com)</option>
+          <option>Development (dev-checkout.example.com)</option>
+        </select>
+        <i data-lucide="chevron-down"
+          class="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-2.5 pointer-events-none"></i>
+      </div>
+
+      <button onclick="triggerQuickCrawl()"
+        class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold px-3 py-1.5 rounded-lg flex items-center space-x-1.5 transition-colors shadow-md shadow-indigo-900/30">
+        <i data-lucide="play" class="w-3.5 h-3.5 fill-current"></i>
+        <span>Run Audit</span>
+      </button>
+
+      <div class="h-4 w-px bg-slate-800"></div>
+
+      <!-- User Profile -->
+      <div class="flex items-center space-x-2 cursor-pointer p-1 rounded-lg hover:bg-slate-800 transition">
+        <div
+          class="w-7 h-7 rounded-full bg-slate-700 flex items-center justify-center font-bold text-xs text-indigo-300 border border-indigo-500/30">
+          PA
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <div class="flex flex-1 overflow-hidden">
+    <!-- Sidebar Navigation -->
+    <aside class="w-64 bg-slate-900 border-r border-slate-800 flex flex-col justify-between hidden md:flex shrink-0">
+      <div class="p-3 space-y-1">
+        <div class="text-[10px] font-semibold text-slate-500 uppercase tracking-wider px-3 py-2">Governance Console
+        </div>
+
+        <button onclick="switchTab('overview')" id="nav-overview"
+          class="nav-btn active w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium transition-all text-slate-200 bg-slate-800 border-l-4 border-indigo-500">
+          <div class="flex items-center space-x-2.5">
+            <i data-lucide="layout-dashboard" class="w-4 h-4 text-indigo-400"></i>
+            <span>Overview Dashboard</span>
+          </div>
+          <span class="text-xs bg-indigo-950 text-indigo-300 px-1.5 py-0.5 rounded font-mono">94.2%</span>
+        </button>
+
+        <button onclick="switchTab('crawler')" id="nav-crawler"
+          class="nav-btn w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium text-slate-400 hover:text-slate-200 hover:bg-slate-800/60 transition-all">
+          <div class="flex items-center space-x-2.5">
+            <i data-lucide="globe" class="w-4 h-4 text-slate-400"></i>
+            <span>Audit Runs & Crawler</span>
+          </div>
+          <span id="activeCrawlBadge"
+            class="hidden text-[10px] bg-emerald-950 text-emerald-400 border border-emerald-800/50 px-1.5 py-0.5 rounded font-mono animate-pulse">RUNNING</span>
+        </button>
+
+        <button onclick="switchTab('inspector')" id="nav-inspector"
+          class="nav-btn w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium text-slate-400 hover:text-slate-200 hover:bg-slate-800/60 transition-all">
+          <div class="flex items-center space-x-2.5">
+            <i data-lucide="search-code" class="w-4 h-4 text-slate-400"></i>
+            <span>Beacon & DataLayer</span>
+          </div>
+          <span class="text-[10px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded">OP Mimic</span>
+        </button>
+
+        <button onclick="switchTab('rules')" id="nav-rules"
+          class="nav-btn w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium text-slate-400 hover:text-slate-200 hover:bg-slate-800/60 transition-all">
+          <div class="flex items-center space-x-2.5">
+            <i data-lucide="sliders" class="w-4 h-4 text-slate-400"></i>
+            <span>Rules Configurator</span>
+          </div>
+          <span class="text-xs text-slate-500 font-mono">24 active</span>
+        </button>
+
+        <button onclick="switchTab('consent')" id="nav-consent"
+          class="nav-btn w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium text-slate-400 hover:text-slate-200 hover:bg-slate-800/60 transition-all">
+          <div class="flex items-center space-x-2.5">
+            <i data-lucide="cookie" class="w-4 h-4 text-slate-400"></i>
+            <span>Consent & CMP Matrix</span>
+          </div>
+          <span
+            class="text-[10px] bg-rose-950 text-rose-300 border border-rose-800/50 px-1.5 py-0.5 rounded font-mono">1
+            Leak</span>
+        </button>
+      </div>
+
+      <!-- Footer / Dictionary Info -->
+      <div class="p-3 border-t border-slate-800 bg-slate-900/50">
+        <div class="bg-slate-800/60 rounded-xl p-3 border border-slate-700/50 text-xs">
+          <div class="flex items-center justify-between mb-1.5">
+            <span class="font-semibold text-slate-300">Tag Dictionary</span>
+            <span class="text-[10px] text-indigo-400">v4.1.0</span>
+          </div>
+          <p class="text-[11px] text-slate-400 mb-2">Parsers active for AEP, Launch, GTM, GA4, Meta Pixel & OneTrust.
+          </p>
+          <div
+            class="flex items-center justify-between text-[10px] text-slate-500 font-mono pt-1 border-t border-slate-700/50">
+            <span>Signature Hash</span>
+            <span>#a8f912c</span>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="flex-1 overflow-y-auto bg-slate-950 p-4 lg:p-6 space-y-6">
+
+      <!-- ================= PAGE 1: OVERVIEW DASHBOARD ================= -->
+      <div id="page-overview" class="page-content space-y-6">
+
+        <!-- Header Banner -->
+        <div
+          class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-900/90 p-5 rounded-2xl border border-slate-800 shadow-sm relative overflow-hidden">
+          <div
+            class="absolute -right-10 -bottom-10 w-40 h-40 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none">
+          </div>
+          <div>
+            <h1 class="text-2xl font-bold text-white tracking-tight flex items-center gap-2">
+              Global Tag Health Overview
+            </h1>
+            <p class="text-sm text-slate-400 mt-1">Continuous monitoring across 1,480 pages in shop.example.com</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <button onclick="switchTab('crawler')"
+              class="bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold px-3 py-2 rounded-lg border border-slate-700 transition">
+              <i data-lucide="refresh-cw" class="w-3.5 h-3.5 inline mr-1"></i> Re-scan Site
+            </button>
+            <button
+              class="bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 text-xs font-semibold px-3 py-2 rounded-lg border border-indigo-500/30 transition">
+              <i data-lucide="download" class="w-3.5 h-3.5 inline mr-1"></i> Export Governance Report
+            </button>
+          </div>
+        </div>
+
+        <!-- Metric KPI Cards -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+          <!-- KPI 1: Overall Health -->
+          <div
+            class="bg-slate-900/80 p-4 rounded-xl border border-slate-800 flex flex-col justify-between relative overflow-hidden group hover:border-slate-700 transition">
+            <div class="flex items-center justify-between text-slate-400 text-xs font-medium">
+              <span>Tag Health Score</span>
+              <i data-lucide="activity" class="w-4 h-4 text-emerald-400"></i>
+            </div>
+            <div class="mt-3 flex items-baseline justify-between">
+              <span class="text-3xl font-extrabold text-white">94.2%</span>
+              <span class="text-xs font-semibold text-emerald-400 flex items-center">
+                <i data-lucide="trending-up" class="w-3.5 h-3.5 mr-0.5"></i> +1.8%
+              </span>
+            </div>
+            <div class="w-full bg-slate-800 rounded-full h-1.5 mt-3 overflow-hidden">
+              <div class="bg-emerald-400 h-1.5 rounded-full" style="width: 94.2%"></div>
+            </div>
+          </div>
+
+          <!-- KPI 2: Pages Audited -->
+          <div
+            class="bg-slate-900/80 p-4 rounded-xl border border-slate-800 flex flex-col justify-between group hover:border-slate-700 transition">
+            <div class="flex items-center justify-between text-slate-400 text-xs font-medium">
+              <span>Pages Audited</span>
+              <i data-lucide="file-check" class="w-4 h-4 text-indigo-400"></i>
+            </div>
+            <div class="mt-3 flex items-baseline justify-between">
+              <span class="text-3xl font-extrabold text-white">1,480</span>
+              <span class="text-xs text-slate-500">of 1,500 target</span>
+            </div>
+            <p class="text-[11px] text-slate-400 mt-2 font-mono">Last crawl: 24 mins ago</p>
+          </div>
+
+          <!-- KPI 3: Critical Violations -->
+          <div
+            class="bg-slate-900/80 p-4 rounded-xl border border-slate-800 flex flex-col justify-between group hover:border-slate-700 transition">
+            <div class="flex items-center justify-between text-slate-400 text-xs font-medium">
+              <span>Critical Anomalies</span>
+              <i data-lucide="alert-triangle" class="w-4 h-4 text-rose-400"></i>
+            </div>
+            <div class="mt-3 flex items-baseline justify-between">
+              <span class="text-3xl font-extrabold text-rose-400">14</span>
+              <span class="text-xs font-semibold text-rose-400 flex items-center">
+                <i data-lucide="arrow-up-right" class="w-3.5 h-3.5"></i> 3 new
+              </span>
+            </div>
+            <p class="text-[11px] text-slate-400 mt-2">Requires immediate fix</p>
+          </div>
+
+          <!-- KPI 4: Active Beacons Detected -->
+          <div
+            class="bg-slate-900/80 p-4 rounded-xl border border-slate-800 flex flex-col justify-between group hover:border-slate-700 transition">
+            <div class="flex items-center justify-between text-slate-400 text-xs font-medium">
+              <span>Captured Beacons</span>
+              <i data-lucide="radio" class="w-4 h-4 text-cyan-400"></i>
+            </div>
+            <div class="mt-3 flex items-baseline justify-between">
+              <span class="text-3xl font-extrabold text-white">18.4k</span>
+              <span class="text-xs text-slate-400">12.4 per page</span>
+            </div>
+            <p class="text-[11px] text-slate-400 mt-2 font-mono">Adobe, GA4, Meta, CMP</p>
+          </div>
+
+          <!-- KPI 5: CMP Compliance Status -->
+          <div
+            class="bg-slate-900/80 p-4 rounded-xl border border-slate-800 flex flex-col justify-between group hover:border-slate-700 transition">
+            <div class="flex items-center justify-between text-slate-400 text-xs font-medium">
+              <span>CMP Compliance</span>
+              <i data-lucide="shield-alert" class="w-4 h-4 text-amber-400"></i>
+            </div>
+            <div class="mt-3 flex items-baseline justify-between">
+              <span class="text-3xl font-extrabold text-amber-400">98.1%</span>
+              <span class="text-xs text-amber-400 font-semibold">1 Leak</span>
+            </div>
+            <p class="text-[11px] text-slate-400 mt-2 font-mono">TCF v2.2 Enforcement</p>
+          </div>
+        </div>
+
+        <!-- Charts & Vendor Breakdown Grid -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <!-- Tag Health Trend Chart -->
+          <div class="lg:col-span-2 bg-slate-900/80 p-5 rounded-2xl border border-slate-800">
+            <div class="flex items-center justify-between mb-4">
+              <div>
+                <h3 class="font-bold text-white text-base">Tag Pass Rate & Quality Trend</h3>
+                <p class="text-xs text-slate-400">7-Day historical health trend across audited page paths</p>
+              </div>
+              <div class="flex items-center space-x-2 text-xs">
+                <span class="flex items-center"><span
+                    class="w-2.5 h-2.5 rounded-full bg-emerald-400 inline-block mr-1"></span> Adobe Analytics</span>
+                <span class="flex items-center"><span
+                    class="w-2.5 h-2.5 rounded-full bg-indigo-400 inline-block mr-1"></span> GA4</span>
+              </div>
+            </div>
+            <div class="h-64 relative">
+              <canvas id="healthTrendChart"></canvas>
+            </div>
+          </div>
+
+          <!-- Tag Firing Breakdown by Vendor -->
+          <div class="bg-slate-900/80 p-5 rounded-2xl border border-slate-800 flex flex-col justify-between">
+            <div>
+              <h3 class="font-bold text-white text-base mb-1">Tag Distribution by Vendor</h3>
+              <p class="text-xs text-slate-400 mb-4">Active tagging requests captured during last audit</p>
+              <div class="h-48 relative flex items-center justify-center">
+                <canvas id="vendorPieChart"></canvas>
+              </div>
+            </div>
+            <div class="grid grid-cols-2 gap-2 text-xs font-mono pt-3 border-t border-slate-800">
+              <div class="flex items-center justify-between"><span class="text-slate-400">Adobe Launch/AEP</span><span
+                  class="text-rose-400 font-bold">38%</span></div>
+              <div class="flex items-center justify-between"><span class="text-slate-400">Google GA4/GTM</span><span
+                  class="text-amber-400 font-bold">42%</span></div>
+              <div class="flex items-center justify-between"><span class="text-slate-400">Meta Pixel</span><span
+                  class="text-blue-400 font-bold">12%</span></div>
+              <div class="flex items-center justify-between"><span class="text-slate-400">OneTrust CMP</span><span
+                  class="text-emerald-400 font-bold">8%</span></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Real-Time Anomaly Stream -->
+        <div class="bg-slate-900/80 rounded-2xl border border-slate-800 overflow-hidden">
+          <div class="p-4 border-b border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div class="flex items-center space-x-2">
+              <div class="w-2 h-2 rounded-full bg-rose-500 animate-pulse"></div>
+              <h3 class="font-bold text-white text-base">Live Violation & Anomaly Feed</h3>
+              <span class="text-xs bg-slate-800 text-slate-300 px-2 py-0.5 rounded-full font-mono">14 Active</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <input type="text" placeholder="Filter violations..."
+                class="bg-slate-800 border border-slate-700 text-xs rounded-lg px-3 py-1.5 text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-indigo-500">
+              <select
+                class="bg-slate-800 border border-slate-700 text-xs rounded-lg px-2.5 py-1.5 text-slate-200 focus:outline-none">
+                <option>All Vendors</option>
+                <option>Adobe Analytics</option>
+                <option>Google Tag Manager</option>
+                <option>Meta Pixel</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Violation Table -->
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs text-slate-300">
+              <thead class="bg-slate-950/80 text-slate-400 uppercase font-mono border-b border-slate-800">
+                <tr>
+                  <th class="p-3">Severity</th>
+                  <th class="p-3">Vendor / Tag</th>
+                  <th class="p-3">Violation Description</th>
+                  <th class="p-3">Affected URL</th>
+                  <th class="p-3 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-800/60 font-mono">
+                <!-- Violation Row 1 -->
+                <tr class="hover:bg-slate-800/40 transition">
+                  <td class="p-3">
+                    <span
+                      class="bg-rose-950 text-rose-300 border border-rose-800/60 px-2 py-0.5 rounded text-[10px] font-bold">CRITICAL</span>
+                  </td>
+                  <td class="p-3 font-semibold text-rose-400 flex items-center gap-1.5">
+                    <span class="w-2 h-2 rounded-full bg-red-500"></span> Adobe Experience Platform
+                  </td>
+                  <td class="p-3 text-slate-200 font-sans">
+                    Missing required <code class="bg-slate-800 px-1 rounded text-rose-300">eVar1</code> (Page Section)
+                    on checkout confirmation page.
+                  </td>
+                  <td class="p-3 text-slate-400 truncate max-w-xs font-mono">/checkout/order-confirmation?id=9281</td>
+                  <td class="p-3 text-right">
+                    <button onclick="inspectUrl('/checkout/order-confirmation?id=9281', 'adobe')"
+                      class="bg-indigo-900/50 hover:bg-indigo-800/80 text-indigo-200 text-[11px] px-2.5 py-1 rounded border border-indigo-700/50 transition">
+                      Inspect
+                    </button>
+                  </td>
+                </tr>
+
+                <!-- Violation Row 2 -->
+                <tr class="hover:bg-slate-800/40 transition">
+                  <td class="p-3">
+                    <span
+                      class="bg-rose-950 text-rose-300 border border-rose-800/60 px-2 py-0.5 rounded text-[10px] font-bold">CRITICAL</span>
+                  </td>
+                  <td class="p-3 font-semibold text-amber-400 flex items-center gap-1.5">
+                    <span class="w-2 h-2 rounded-full bg-yellow-500"></span> Google GA4
+                  </td>
+                  <td class="p-3 text-slate-200 font-sans">
+                    <code class="bg-slate-800 px-1 rounded text-amber-300">purchase</code> event fired without required
+                    <code class="bg-slate-800 px-1 rounded text-amber-300">currency</code> parameter.
+                  </td>
+                  <td class="p-3 text-slate-400 truncate max-w-xs font-mono">/cart/success</td>
+                  <td class="p-3 text-right">
+                    <button onclick="inspectUrl('/cart/success', 'ga4')"
+                      class="bg-indigo-900/50 hover:bg-indigo-800/80 text-indigo-200 text-[11px] px-2.5 py-1 rounded border border-indigo-700/50 transition">
+                      Inspect
+                    </button>
+                  </td>
+                </tr>
+
+                <!-- Violation Row 3 -->
+                <tr class="hover:bg-slate-800/40 transition">
+                  <td class="p-3">
+                    <span
+                      class="bg-amber-950 text-amber-300 border border-amber-800/60 px-2 py-0.5 rounded text-[10px] font-bold">WARNING</span>
+                  </td>
+                  <td class="p-3 font-semibold text-blue-400 flex items-center gap-1.5">
+                    <span class="w-2 h-2 rounded-full bg-blue-500"></span> Meta Pixel
+                  </td>
+                  <td class="p-3 text-slate-200 font-sans">
+                    Duplicate <code class="bg-slate-800 px-1 rounded">PageView</code> event detected within 150ms
+                    window.
+                  </td>
+                  <td class="p-3 text-slate-400 truncate max-w-xs font-mono">/products/outdoor-jacket-v2</td>
+                  <td class="p-3 text-right">
+                    <button onclick="inspectUrl('/products/outdoor-jacket-v2', 'meta')"
+                      class="bg-indigo-900/50 hover:bg-indigo-800/80 text-indigo-200 text-[11px] px-2.5 py-1 rounded border border-indigo-700/50 transition">
+                      Inspect
+                    </button>
+                  </td>
+                </tr>
+
+                <!-- Violation Row 4 -->
+                <tr class="hover:bg-slate-800/40 transition">
+                  <td class="p-3">
+                    <span
+                      class="bg-rose-950 text-rose-300 border border-rose-800/60 px-2 py-0.5 rounded text-[10px] font-bold">CRITICAL</span>
+                  </td>
+                  <td class="p-3 font-semibold text-emerald-400 flex items-center gap-1.5">
+                    <span class="w-2 h-2 rounded-full bg-emerald-500"></span> OneTrust CMP
+                  </td>
+                  <td class="p-3 text-slate-200 font-sans">
+                    Unconsented beacon (<code
+                      class="bg-slate-800 px-1 rounded text-rose-300">google-analytics.com/collect</code>) fired before
+                    opt-in grant.
+                  </td>
+                  <td class="p-3 text-slate-400 truncate max-w-xs font-mono">/landing-promo-spring</td>
+                  <td class="p-3 text-right">
+                    <button onclick="switchTab('consent')"
+                      class="bg-indigo-900/50 hover:bg-indigo-800/80 text-indigo-200 text-[11px] px-2.5 py-1 rounded border border-indigo-700/50 transition">
+                      Inspect CMP
+                    </button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ================= PAGE 2: CRAWLER & AUDIT RUNS ================= -->
+      <div id="page-crawler" class="page-content hidden space-y-6">
+
+        <!-- Crawler Config & Execution Console -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+          <!-- Crawler Config Form -->
+          <div class="bg-slate-900/80 p-5 rounded-2xl border border-slate-800 space-y-4">
+            <div class="border-b border-slate-800 pb-3">
+              <h2 class="font-bold text-white text-base flex items-center gap-2">
+                <i data-lucide="play-circle" class="w-5 h-5 text-indigo-400"></i> New Web Crawl & Audit
+              </h2>
+              <p class="text-xs text-slate-400 mt-1">Configure headless Puppeteer fleet settings</p>
+            </div>
+
+            <div class="space-y-3 text-xs">
+              <div>
+                <label class="block text-slate-300 font-medium mb-1">Start URL</label>
+                <input id="crawlStartUrl" type="url" value="http://capitalgroup.com/advisor/insights.html"
+                  class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-slate-100 font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500">
+              </div>
+
+              <div class="grid grid-cols-2 gap-3">
+                <div>
+                  <label class="block text-slate-300 font-medium mb-1">Max Pages</label>
+                  <input id="crawlMaxPages" type="number" value="100"
+                    class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-slate-100 font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                </div>
+                <div>
+                  <label class="block text-slate-300 font-medium mb-1">Depth Limit</label>
+                  <input type="number" value="4"
+                    class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-slate-100 font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                </div>
+              </div>
+
+              <div>
+                <label class="block text-slate-300 font-medium mb-1">Consent Simulation</label>
+                <select
+                  class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                  <option>Simulate Full Opt-In (Accept All)</option>
+                  <option>Simulate Opt-Out (Reject Analytics/Marketing)</option>
+                  <option>Pre-Consent State Only (No interaction)</option>
+                </select>
+              </div>
+
+              <div>
+                <label class="block text-slate-300 font-medium mb-1">Simulated Geo Location</label>
+                <select
+                  class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                  <option>United States (US-CA / CCPA)</option>
+                  <option>European Union (DE / GDPR)</option>
+                  <option>United Kingdom (UK / PECR)</option>
+                </select>
+              </div>
+
+              <div class="pt-2">
+                <button onclick="startCrawlSimulation()"
+                  class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-2.5 rounded-xl transition shadow-lg shadow-indigo-900/40 flex items-center justify-center space-x-2">
+                  <i data-lucide="play" class="w-4 h-4 fill-current"></i>
+                  <span>Launch Automated Audit</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Live Scan Status Box -->
+          <div
+            class="lg:col-span-2 bg-slate-900/80 p-5 rounded-2xl border border-slate-800 flex flex-col justify-between">
+            <div>
+              <div class="flex items-center justify-between border-b border-slate-800 pb-3 mb-4">
+                <div>
+                  <h3 class="font-bold text-white text-base">Headless Fleet Status</h3>
+                  <p class="text-xs text-slate-400">Real-time Puppeteer cluster execution pipeline</p>
+                </div>
+                <span id="scanStatusBadge"
+                  class="bg-slate-800 text-slate-400 text-xs px-2.5 py-1 rounded-full font-mono border border-slate-700">STANDBY</span>
+              </div>
+
+              <!-- Active Progress Metrics -->
+              <div class="space-y-4">
+                <div>
+                  <div class="flex justify-between text-xs font-mono mb-1">
+                    <span class="text-slate-400">Crawl Progress</span>
+                    <span id="progressPercent" class="text-indigo-400 font-bold">0%</span>
+                  </div>
+                  <div class="w-full bg-slate-800 h-2.5 rounded-full overflow-hidden">
+                    <div id="progressBar"
+                      class="bg-gradient-to-r from-indigo-500 to-cyan-400 h-2.5 rounded-full transition-all duration-300"
+                      style="width: 0%"></div>
+                  </div>
+                </div>
+
+                <div class="grid grid-cols-3 gap-3 pt-2">
+                  <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 text-center">
+                    <div class="text-[10px] text-slate-400 uppercase font-mono">Pages Processed</div>
+                    <div id="pagesCount" class="text-xl font-bold text-white mt-1">0</div>
+                  </div>
+                  <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 text-center">
+                    <div class="text-[10px] text-slate-400 uppercase font-mono">Beacons Intercepted</div>
+                    <div id="beaconsCount" class="text-xl font-bold text-cyan-400 mt-1">0</div>
+                  </div>
+                  <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 text-center">
+                    <div class="text-[10px] text-slate-400 uppercase font-mono">Rule Violations</div>
+                    <div id="crawlViolationsCount" class="text-xl font-bold text-rose-400 mt-1">0</div>
+                  </div>
+                </div>
+
+                <!-- Simulated Live Terminal Output -->
+                <div
+                  class="bg-slate-950 p-3 rounded-xl border border-slate-800 font-mono text-[11px] h-36 overflow-y-auto space-y-1 text-slate-400"
+                  id="terminalLog">
+                  <div class="text-slate-500">[SYSTEM] Runner initialized. Waiting for trigger command...</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Historical Audit Runs Table -->
+        <div class="bg-slate-900/80 rounded-2xl border border-slate-800 overflow-hidden">
+          <div class="p-4 border-b border-slate-800 flex items-center justify-between">
+            <h3 class="font-bold text-white text-base">Audit History & Executive Logs</h3>
+            <button
+              class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 px-3 py-1.5 rounded-lg border border-slate-700 transition">
+              Export History (CSV)
+            </button>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs text-slate-300">
+              <thead class="bg-slate-950/80 text-slate-400 uppercase font-mono border-b border-slate-800">
+                <tr>
+                  <th class="p-3">Audit ID</th>
+                  <th class="p-3">Target Domain</th>
+                  <th class="p-3">Pages Audited</th>
+                  <th class="p-3">Health Score</th>
+                  <th class="p-3">Violations</th>
+                  <th class="p-3">Finished At</th>
+                  <th class="p-3 text-right">Report</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-800/60 font-mono">
+                <tr class="hover:bg-slate-800/40">
+                  <td class="p-3 text-indigo-400 font-semibold">#AUD-9021</td>
+                  <td class="p-3 text-slate-200">http://capitalgroup.com/advisor/insights.html</td>
+                  <td class="p-3">1,480</td>
+                  <td class="p-3"><span class="text-emerald-400 font-bold">94.2%</span></td>
+                  <td class="p-3"><span class="text-rose-400 font-bold">14</span></td>
+                  <td class="p-3 text-slate-400">Today, 10:24 AM</td>
+                  <td class="p-3 text-right">
+                    <button class="text-xs text-indigo-400 hover:text-indigo-300 underline">Download PDF</button>
+                  </td>
+                </tr>
+                <tr class="hover:bg-slate-800/40">
+                  <td class="p-3 text-indigo-400 font-semibold">#AUD-8980</td>
+                  <td class="p-3 text-slate-200">staging.shop.example.com</td>
+                  <td class="p-3">420</td>
+                  <td class="p-3"><span class="text-emerald-400 font-bold">98.5%</span></td>
+                  <td class="p-3"><span class="text-emerald-400 font-bold">2</span></td>
+                  <td class="p-3 text-slate-400">Yesterday, 04:15 PM</td>
+                  <td class="p-3 text-right">
+                    <button class="text-xs text-indigo-400 hover:text-indigo-300 underline">Download PDF</button>
+                  </td>
+                </tr>
+                <tr class="hover:bg-slate-800/40">
+                  <td class="p-3 text-indigo-400 font-semibold">#AUD-8842</td>
+                  <td class="p-3 text-slate-200">checkout.example.com</td>
+                  <td class="p-3">85</td>
+                  <td class="p-3"><span class="text-amber-400 font-bold">89.0%</span></td>
+                  <td class="p-3"><span class="text-rose-400 font-bold">18</span></td>
+                  <td class="p-3 text-slate-400">Oct 11, 2026</td>
+                  <td class="p-3 text-right">
+                    <button class="text-xs text-indigo-400 hover:text-indigo-300 underline">Download PDF</button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ================= PAGE 3: TAG & DATA LAYER INSPECTOR ================= -->
+      <div id="page-inspector" class="page-content hidden space-y-6">
+
+        <!-- URL Selector Bar -->
+        <div
+          class="bg-slate-900/90 p-4 rounded-2xl border border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-3">
+          <div class="flex items-center space-x-3 flex-1">
+            <i data-lucide="compass" class="w-5 h-5 text-indigo-400 shrink-0"></i>
+            <div class="flex-1">
+              <label class="block text-[10px] text-slate-400 font-mono uppercase">Inspect Web Page Target</label>
+              <select id="inspectorUrlSelect" onchange="updateInspectorView()"
+                class="w-full bg-slate-800 text-xs font-mono text-indigo-300 border border-slate-700 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-indigo-500">
+                <option value="checkout">https://capitalgroup.com/checkout/order-confirmation?id=9281</option>
+                <option value="product">https://shop.example.com/products/outdoor-jacket-v2</option>
+                <option value="home">https://shop.example.com/</option>
+              </select>
+            </div>
+          </div>
+          <div class="flex items-center gap-2">
+            <span
+              class="text-xs bg-emerald-950 text-emerald-400 border border-emerald-800/60 px-2.5 py-1 rounded-lg font-mono">200
+              OK</span>
+            <span class="text-xs bg-slate-800 text-slate-300 px-2.5 py-1 rounded-lg font-mono">1.24s Load Time</span>
+          </div>
+        </div>
+
+        <!-- Main Inspector 2-Column Split View -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+          <!-- Column 1: Captured Beacons Interceptor List (5 cols) -->
+          <div
+            class="lg:col-span-5 bg-slate-900/80 rounded-2xl border border-slate-800 flex flex-col h-[650px] overflow-hidden">
+            <div class="p-3.5 border-b border-slate-800 bg-slate-950/60 flex items-center justify-between">
+              <div class="flex items-center space-x-2">
+                <i data-lucide="network" class="w-4 h-4 text-cyan-400"></i>
+                <h3 class="font-bold text-white text-xs uppercase tracking-wider">Network Beacons Intercepted</h3>
+              </div>
+              <span id="beaconCountBadge"
+                class="text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded font-mono">5 Beacons</span>
+            </div>
+
+            <!-- Request Type Filter Tabs -->
+            <div class="flex border-b border-slate-800 bg-slate-950 text-xs font-mono">
+              <button onclick="filterBeacons('all')"
+                class="flex-1 py-2 text-center text-indigo-400 border-b-2 border-indigo-500 font-semibold">ALL</button>
+              <button onclick="filterBeacons('adobe')"
+                class="flex-1 py-2 text-center text-slate-400 hover:text-slate-200">ADOBE</button>
+              <button onclick="filterBeacons('ga4')"
+                class="flex-1 py-2 text-center text-slate-400 hover:text-slate-200">GA4</button>
+              <button onclick="filterBeacons('meta')"
+                class="flex-1 py-2 text-center text-slate-400 hover:text-slate-200">META</button>
+            </div>
+
+            <!-- Intercepted Beacons List -->
+            <div class="flex-1 overflow-y-auto divide-y divide-slate-800/60 font-mono text-xs" id="beaconsList">
+              <!-- Item 1: Adobe Analytics -->
+              <div onclick="selectBeacon('adobe-1')"
+                class="p-3 hover:bg-slate-800/60 cursor-pointer bg-slate-800/40 border-l-4 border-rose-500">
+                <div class="flex items-center justify-between mb-1">
+                  <span class="text-rose-400 font-bold flex items-center gap-1.5">
+                    <span class="w-2 h-2 rounded-full bg-red-500"></span> Adobe Analytics
+                  </span>
+                  <span
+                    class="text-[10px] bg-rose-950 text-rose-300 px-1.5 py-0.5 rounded border border-rose-800/50">FAILED
+                    RULE</span>
+                </div>
+                <div class="text-slate-300 truncate text-[11px] mb-1">
+                  https://metrics.example.com/b/ss/shopglobal/1/JS-2.22</div>
+                <div class="flex items-center justify-between text-[10px] text-slate-500">
+                  <span>POST • 200 OK</span>
+                  <span>142ms</span>
+                </div>
+              </div>
+
+              <!-- Item 2: GA4 Collect -->
+              <div onclick="selectBeacon('ga4-1')" class="p-3 hover:bg-slate-800/60 cursor-pointer">
+                <div class="flex items-center justify-between mb-1">
+                  <span class="text-amber-400 font-bold flex items-center gap-1.5">
+                    <span class="w-2 h-2 rounded-full bg-amber-500"></span> Google Analytics 4
+                  </span>
+                  <span
+                    class="text-[10px] bg-emerald-950 text-emerald-300 px-1.5 py-0.5 rounded border border-emerald-800/50">PASSED</span>
+                </div>
+                <div class="text-slate-300 truncate text-[11px] mb-1">
+                  https://www.google-analytics.com/g/collect?v=2&tid=G-9812A</div>
+                <div class="flex items-center justify-between text-[10px] text-slate-500">
+                  <span>POST • 204 No Content</span>
+                  <span>88ms</span>
+                </div>
+              </div>
+
+              <!-- Item 3: Meta Pixel -->
+              <div onclick="selectBeacon('meta-1')" class="p-3 hover:bg-slate-800/60 cursor-pointer">
+                <div class="flex items-center justify-between mb-1">
+                  <span class="text-blue-400 font-bold flex items-center gap-1.5">
+                    <span class="w-2 h-2 rounded-full bg-blue-500"></span> Meta Pixel
+                  </span>
+                  <span
+                    class="text-[10px] bg-emerald-950 text-emerald-300 px-1.5 py-0.5 rounded border border-emerald-800/50">PASSED</span>
+                </div>
+                <div class="text-slate-300 truncate text-[11px] mb-1">https://www.facebook.com/tr/?id=98124&ev=Purchase
+                </div>
+                <div class="flex items-center justify-between text-[10px] text-slate-500">
+                  <span>GET • 200 OK</span>
+                  <span>65ms</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Column 2: Decoded Payload & DataLayer State Inspector (7 cols) -->
+          <div
+            class="lg:col-span-7 bg-slate-900/80 rounded-2xl border border-slate-800 flex flex-col h-[650px] overflow-hidden">
+
+            <!-- Inspector Tab Switcher -->
+            <div class="p-3.5 border-b border-slate-800 bg-slate-950/60 flex items-center justify-between">
+              <div class="flex space-x-2 text-xs font-semibold">
+                <button onclick="switchInspectorTab('payload')" id="tab-payload"
+                  class="px-3 py-1.5 rounded-lg bg-indigo-600 text-white">Decoded Payload</button>
+                <button onclick="switchInspectorTab('datalayer')" id="tab-datalayer"
+                  class="px-3 py-1.5 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700">DataLayer JSON</button>
+                <button onclick="switchInspectorTab('raw')" id="tab-raw"
+                  class="px-3 py-1.5 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700">Raw Beacon
+                  String</button>
+              </div>
+              <span class="text-xs text-indigo-400 font-mono">ObservePoint Engine v2</span>
+            </div>
+
+            <!-- Inspector Panel Content Body -->
+            <div class="flex-1 p-4 overflow-y-auto font-mono text-xs space-y-4" id="inspectorBody">
+
+              <!-- Decoded Payload View (Default) -->
+              <div id="view-payload" class="space-y-4">
+                <div
+                  class="bg-rose-950/40 border border-rose-800/50 p-3 rounded-xl flex items-start space-x-3 text-rose-200 text-xs">
+                  <i data-lucide="alert-octagon" class="w-5 h-5 text-rose-400 shrink-0 mt-0.5"></i>
+                  <div>
+                    <span class="font-bold block">Validation Failure Identified</span>
+                    <span>Required Adobe variable <code class="bg-rose-900/60 px-1 rounded">eVar1</code> (Page Section)
+                      was missing from beacon request query string.</span>
+                  </div>
+                </div>
+
+                <div class="border border-slate-800 rounded-xl overflow-hidden">
+                  <div
+                    class="bg-slate-950 px-3 py-2 border-b border-slate-800 text-slate-400 text-[11px] font-bold uppercase">
+                    Parsed Adobe Analytics Variables (s.code / Alloy)
+                  </div>
+                  <table class="w-full text-left text-xs">
+                    <thead class="bg-slate-900 text-slate-400 text-[10px] uppercase">
+                      <tr>
+                        <th class="p-2.5">Variable / Parameter</th>
+                        <th class="p-2.5">Decoded Value</th>
+                        <th class="p-2.5 text-right">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-800 text-slate-300">
+                      <tr>
+                        <td class="p-2.5 text-indigo-300 font-semibold">pageName</td>
+                        <td class="p-2.5 text-emerald-400">ecomm:checkout:order-confirmation</td>
+                        <td class="p-2.5 text-right"><span class="text-emerald-400">✓ Valid</span></td>
+                      </tr>
+                      <tr>
+                        <td class="p-2.5 text-indigo-300 font-semibold">events</td>
+                        <td class="p-2.5 text-slate-200">event1, purchase, event94</td>
+                        <td class="p-2.5 text-right"><span class="text-emerald-400">✓ Valid</span></td>
+                      </tr>
+                      <tr class="bg-rose-950/20">
+                        <td class="p-2.5 text-rose-400 font-semibold">eVar1 (Page Section)</td>
+                        <td class="p-2.5 text-rose-400 italic">[UNDEFINED / MISSING]</td>
+                        <td class="p-2.5 text-right"><span class="text-rose-400 font-bold">❌ Missing</span></td>
+                      </tr>
+                      <tr>
+                        <td class="p-2.5 text-indigo-300 font-semibold">eVar3 (User Type)</td>
+                        <td class="p-2.5 text-slate-200">authenticated_member</td>
+                        <td class="p-2.5 text-right"><span class="text-emerald-400">✓ Valid</span></td>
+                      </tr>
+                      <tr>
+                        <td class="p-2.5 text-indigo-300 font-semibold">prop3 (Currency)</td>
+                        <td class="p-2.5 text-slate-200">USD</td>
+                        <td class="p-2.5 text-right"><span class="text-emerald-400">✓ Valid</span></td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <!-- DataLayer JSON View -->
+              <div id="view-datalayer" class="hidden">
+                <div
+                  class="bg-slate-950 p-4 rounded-xl border border-slate-800 font-mono text-xs text-emerald-400 overflow-x-auto leading-relaxed">
+                  <pre>{
+  <span class="text-indigo-400">"event"</span>: <span class="text-amber-300">"purchase"</span>,
+  <span class="text-indigo-400">"ecommerce"</span>: {
+    <span class="text-indigo-400">"transaction_id"</span>: <span class="text-amber-300">"T-981249"</span>,
+    <span class="text-indigo-400">"value"</span>: <span class="text-cyan-300">149.99</span>,
+    <span class="text-indigo-400">"tax"</span>: <span class="text-cyan-300">12.00</span>,
+    <span class="text-indigo-400">"shipping"</span>: <span class="text-cyan-300">5.99</span>,
+    <span class="text-indigo-400">"currency"</span>: <span class="text-amber-300">"USD"</span>,
+    <span class="text-indigo-400">"items"</span>: [
+      {
+        <span class="text-indigo-400">"item_id"</span>: <span class="text-amber-300">"SKU-882"</span>,
+        <span class="text-indigo-400">"item_name"</span>: <span class="text-amber-300">"Waterproof Trail Parka"</span>,
+        <span class="text-indigo-400">"price"</span>: <span class="text-cyan-300">149.99</span>,
+        <span class="text-indigo-400">"quantity"</span>: <span class="text-cyan-300">1</span>
+      }
+    ]
+  },
+  <span class="text-indigo-400">"user"</span>: {
+    <span class="text-indigo-400">"consent_status"</span>: <span class="text-amber-300">"granted"</span>,
+    <span class="text-indigo-400">"user_id_hash"</span>: <span class="text-amber-300">"8f12a88e99"</span>
+  }
+}</pre>
+                </div>
+              </div>
+
+              <!-- Raw Beacon String View -->
+              <div id="view-raw" class="hidden">
+                <div
+                  class="bg-slate-950 p-4 rounded-xl border border-slate-800 font-mono text-xs text-slate-300 break-all leading-relaxed">
+                  https://metrics.example.com/b/ss/shopglobal/1/JS-2.22/s981249?AQB=1&ndh=1&pf=1&pageName=ecomm%3Acheckout%3Aorder-confirmation&events=event1%2Cpurchase%2Cevent94&v3=authenticated_member&c3=USD&AQE=1
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- ================= PAGE 4: RULES & VALIDATION CONFIGURATOR ================= -->
+      <div id="page-rules" class="page-content hidden space-y-6">
+
+        <div
+          class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-900/90 p-5 rounded-2xl border border-slate-800">
+          <div>
+            <h2 class="text-xl font-bold text-white">Declarative Rule Engine</h2>
+            <p class="text-xs text-slate-400 mt-1">Configure automated compliance rules for Adobe Launch, GTM, and GA4
+            </p>
+          </div>
+          <button onclick="openRuleModal()"
+            class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold px-4 py-2 rounded-xl transition flex items-center space-x-1.5 shadow-md">
+            <i data-lucide="plus" class="w-4 h-4"></i>
+            <span>Create New Rule</span>
+          </button>
+        </div>
+
+        <!-- Rules Table -->
+        <div class="bg-slate-900/80 rounded-2xl border border-slate-800 overflow-hidden">
+          <div class="p-4 border-b border-slate-800 flex items-center justify-between">
+            <h3 class="font-bold text-white text-base">Active Tag Governance Rules (24)</h3>
+            <input type="text" placeholder="Search rules..."
+              class="bg-slate-800 border border-slate-700 text-xs rounded-lg px-3 py-1.5 text-slate-200">
+          </div>
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs text-slate-300">
+              <thead class="bg-slate-950/80 text-slate-400 uppercase font-mono border-b border-slate-800">
+                <tr>
+                  <th class="p-3">Status</th>
+                  <th class="p-3">Rule Name & Vendor</th>
+                  <th class="p-3">Trigger Condition / URL Pattern</th>
+                  <th class="p-3">Expected Validation</th>
+                  <th class="p-3">Pass Rate</th>
+                  <th class="p-3 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-800/60 font-mono">
+                <!-- Rule 1 -->
+                <tr class="hover:bg-slate-800/40">
+                  <td class="p-3">
+                    <label class="relative inline-flex items-center cursor-pointer">
+                      <input type="checkbox" checked class="sr-only peer">
+                      <div
+                        class="w-8 h-4 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-indigo-600">
+                      </div>
+                    </label>
+                  </td>
+                  <td class="p-3">
+                    <span class="text-white font-semibold font-sans block">Require eVar1 on Checkout</span>
+                    <span class="text-[10px] text-rose-400">Adobe Experience Platform</span>
+                  </td>
+                  <td class="p-3 text-slate-400">URL matches <code
+                      class="bg-slate-800 px-1 rounded text-slate-200">/checkout/.*</code></td>
+                  <td class="p-3 text-slate-300 font-sans">
+                    Query parameter <code class="bg-slate-800 px-1 rounded text-indigo-300">v1</code> must exist & not
+                    be empty.
+                  </td>
+                  <td class="p-3"><span class="text-rose-400 font-bold">88.4%</span></td>
+                  <td class="p-3 text-right space-x-2">
+                    <button class="text-slate-400 hover:text-slate-200"><i data-lucide="edit-3"
+                        class="w-4 h-4 inline"></i></button>
+                    <button class="text-rose-400 hover:text-rose-300"><i data-lucide="trash-2"
+                        class="w-4 h-4 inline"></i></button>
+                  </td>
+                </tr>
+
+                <!-- Rule 2 -->
+                <tr class="hover:bg-slate-800/40">
+                  <td class="p-3">
+                    <label class="relative inline-flex items-center cursor-pointer">
+                      <input type="checkbox" checked class="sr-only peer">
+                      <div
+                        class="w-8 h-4 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-indigo-600">
+                      </div>
+                    </label>
+                  </td>
+                  <td class="p-3">
+                    <span class="text-white font-semibold font-sans block">Enforce GA4 Purchase Currency</span>
+                    <span class="text-[10px] text-amber-400">Google GA4</span>
+                  </td>
+                  <td class="p-3 text-slate-400">Event == <code
+                      class="bg-slate-800 px-1 rounded text-slate-200">purchase</code></td>
+                  <td class="p-3 text-slate-300 font-sans">
+                    Payload variable <code class="bg-slate-800 px-1 rounded text-amber-300">currency</code> matches
+                    <code class="bg-slate-800 px-1 rounded text-slate-200">USD|EUR|GBP</code>.
+                  </td>
+                  <td class="p-3"><span class="text-emerald-400 font-bold">100%</span></td>
+                  <td class="p-3 text-right space-x-2">
+                    <button class="text-slate-400 hover:text-slate-200"><i data-lucide="edit-3"
+                        class="w-4 h-4 inline"></i></button>
+                    <button class="text-rose-400 hover:text-rose-300"><i data-lucide="trash-2"
+                        class="w-4 h-4 inline"></i></button>
+                  </td>
+                </tr>
+
+                <!-- Rule 3 -->
+                <tr class="hover:bg-slate-800/40">
+                  <td class="p-3">
+                    <label class="relative inline-flex items-center cursor-pointer">
+                      <input type="checkbox" checked class="sr-only peer">
+                      <div
+                        class="w-8 h-4 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-indigo-600">
+                      </div>
+                    </label>
+                  </td>
+                  <td class="p-3">
+                    <span class="text-white font-semibold font-sans block">Block Unconsented Marketing Pixels</span>
+                    <span class="text-[10px] text-emerald-400">OneTrust CMP</span>
+                  </td>
+                  <td class="p-3 text-slate-400">Pre-Consent State</td>
+                  <td class="p-3 text-slate-300 font-sans">
+                    No network calls permitted to <code
+                      class="bg-slate-800 px-1 rounded text-slate-200">facebook.com/tr</code>.
+                  </td>
+                  <td class="p-3"><span class="text-emerald-400 font-bold">99.2%</span></td>
+                  <td class="p-3 text-right space-x-2">
+                    <button class="text-slate-400 hover:text-slate-200"><i data-lucide="edit-3"
+                        class="w-4 h-4 inline"></i></button>
+                    <button class="text-rose-400 hover:text-rose-300"><i data-lucide="trash-2"
+                        class="w-4 h-4 inline"></i></button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ================= PAGE 5: CONSENT & CMP MATRIX ================= -->
+      <div id="page-consent" class="page-content hidden space-y-6">
+
+        <div class="bg-slate-900/90 p-5 rounded-2xl border border-slate-800">
+          <h2 class="text-xl font-bold text-white flex items-center gap-2">
+            <i data-lucide="cookie" class="w-6 h-6 text-emerald-400"></i>
+            Consent Management Platform (CMP) & TCF v2.2 Governance
+          </h2>
+          <p class="text-xs text-slate-400 mt-1">Verifies that marketing & analytics tags strictly respect user opt-in
+            boundaries</p>
+        </div>
+
+        <!-- Pre-Consent vs Post-Consent Execution Matrix -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+          <!-- Box 1: Pre-Consent State (Strict Expectation: Zero Unauthorized Marketing) -->
+          <div class="bg-slate-900/80 p-5 rounded-2xl border border-slate-800 space-y-4">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div>
+                <h3 class="font-bold text-white text-base">State A: Pre-Consent / Opt-Out State</h3>
+                <p class="text-xs text-slate-400">Simulated load with no banner interaction</p>
+              </div>
+              <span
+                class="text-xs bg-amber-950 text-amber-300 border border-amber-800/60 px-2.5 py-1 rounded-full font-mono">1
+                Violation</span>
+            </div>
+
+            <div class="space-y-3 font-mono text-xs">
+              <div class="p-3 bg-slate-950 rounded-xl border border-slate-800 flex items-center justify-between">
+                <div class="flex items-center space-x-2">
+                  <span class="w-2.5 h-2.5 rounded-full bg-emerald-400"></span>
+                  <span class="text-slate-200">OneTrust CMP Banner Script</span>
+                </div>
+                <span class="text-emerald-400 font-bold">ALLOWED</span>
+              </div>
+
+              <div class="p-3 bg-slate-950 rounded-xl border border-slate-800 flex items-center justify-between">
+                <div class="flex items-center space-x-2">
+                  <span class="w-2.5 h-2.5 rounded-full bg-indigo-400"></span>
+                  <span class="text-slate-200">GTM Snippet (gtm.js)</span>
+                </div>
+                <span class="text-emerald-400 font-bold">ALLOWED (Essential)</span>
+              </div>
+
+              <!-- Unconsented Leak Detection -->
+              <div class="p-3 bg-rose-950/30 rounded-xl border border-rose-800/60 flex items-center justify-between">
+                <div class="flex items-center space-x-2">
+                  <span class="w-2.5 h-2.5 rounded-full bg-rose-500 animate-ping"></span>
+                  <span class="text-rose-200 font-bold">GA4 Collect (google-analytics.com)</span>
+                </div>
+                <span class="text-rose-400 font-extrabold flex items-center gap-1">
+                  <i data-lucide="shield-alert" class="w-4 h-4"></i> PRIVACY LEAK
+                </span>
+              </div>
+
+              <div class="p-3 bg-slate-950 rounded-xl border border-slate-800 flex items-center justify-between">
+                <div class="flex items-center space-x-2">
+                  <span class="w-2.5 h-2.5 rounded-full bg-slate-600"></span>
+                  <span class="text-slate-400">Meta Pixel (facebook.com/tr)</span>
+                </div>
+                <span class="text-slate-500">BLOCKED (Correct)</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Box 2: Post-Consent State (Expectation: All Vendor Tags Fire Cleanly) -->
+          <div class="bg-slate-900/80 p-5 rounded-2xl border border-slate-800 space-y-4">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div>
+                <h3 class="font-bold text-white text-base">State B: Post-Consent (Accept All Granted)</h3>
+                <p class="text-xs text-slate-400">Simulated user click on "Accept All Cookies"</p>
+              </div>
+              <span
+                class="text-xs bg-emerald-950 text-emerald-300 border border-emerald-800/60 px-2.5 py-1 rounded-full font-mono">100%
+                Compliant</span>
+            </div>
+
+            <div class="space-y-3 font-mono text-xs">
+              <div class="p-3 bg-slate-950 rounded-xl border border-slate-800 flex items-center justify-between">
+                <div class="flex items-center space-x-2">
+                  <span class="w-2.5 h-2.5 rounded-full bg-rose-500"></span>
+                  <span class="text-slate-200">Adobe Analytics Beacon</span>
+                </div>
+                <span class="text-emerald-400 font-bold">FIRING OK</span>
+              </div>
+
+              <div class="p-3 bg-slate-950 rounded-xl border border-slate-800 flex items-center justify-between">
+                <div class="flex items-center space-x-2">
+                  <span class="w-2.5 h-2.5 rounded-full bg-amber-400"></span>
+                  <span class="text-slate-200">GA4 Measurement Protocol</span>
+                </div>
+                <span class="text-emerald-400 font-bold">FIRING OK</span>
+              </div>
+
+              <div class="p-3 bg-slate-950 rounded-xl border border-slate-800 flex items-center justify-between">
+                <div class="flex items-center space-x-2">
+                  <span class="w-2.5 h-2.5 rounded-full bg-blue-400"></span>
+                  <span class="text-slate-200">Meta Purchase Pixel</span>
+                </div>
+                <span class="text-emerald-400 font-bold">FIRING OK</span>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+  <!-- New Rule Modal Dialog -->
+  <div id="ruleModal"
+    class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-lg w-full p-6 space-y-4 shadow-2xl">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+        <h3 class="font-bold text-white text-base">Create Tag Governance Rule</h3>
+        <button onclick="closeRuleModal()" class="text-slate-400 hover:text-white"><i data-lucide="x"
+            class="w-5 h-5"></i></button>
+      </div>
+
+      <div class="space-y-3 text-xs">
+        <div>
+          <label class="block text-slate-300 font-medium mb-1">Rule Name</label>
+          <input type="text" placeholder="e.g. Require Adobe eVar1 on Checkout"
+            class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-slate-100">
+        </div>
+
+        <div>
+          <label class="block text-slate-300 font-medium mb-1">Target Vendor</label>
+          <select class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-slate-100">
+            <option>Adobe Experience Platform / Analytics</option>
+            <option>Google Tag Manager / GA4</option>
+            <option>Meta Pixel</option>
+            <option>OneTrust / Cookiebot CMP</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-slate-300 font-medium mb-1">URL Trigger Regex Pattern</label>
+          <input type="text" value=".*\/checkout\/.*"
+            class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-slate-100 font-mono">
+        </div>
+
+        <div>
+          <label class="block text-slate-300 font-medium mb-1">Expected Parameter / Variable</label>
+          <input type="text" placeholder="eVar1 or ecommerce.items"
+            class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-slate-100 font-mono">
+        </div>
+      </div>
+
+      <div class="pt-3 border-t border-slate-800 flex justify-end space-x-2">
+        <button onclick="closeRuleModal()"
+          class="px-4 py-2 bg-slate-800 text-slate-300 rounded-lg text-xs hover:bg-slate-700">Cancel</button>
+        <button onclick="closeRuleModal()"
+          class="px-4 py-2 bg-indigo-600 text-white font-semibold rounded-lg text-xs hover:bg-indigo-500">Save &
+          Activate Rule</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Initialize Lucide Icons
+    lucide.createIcons();
+
+    // Chart.js Implementations
+    let healthChart, vendorChart;
+
+    window.onload = function () {
+      initCharts();
+    };
+
+    function initCharts() {
+      // 1. Health Trend Line Chart
+      const ctxTrend = document.getElementById('healthTrendChart').getContext('2d');
+      healthChart = new Chart(ctxTrend, {
+        type: 'line',
+        data: {
+          labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+          datasets: [
+            {
+              label: 'Adobe Analytics Pass Rate',
+              data: [92, 94, 91, 95, 93, 96, 94.2],
+              borderColor: '#f43f5e',
+              backgroundColor: 'rgba(244, 63, 94, 0.1)',
+              tension: 0.3,
+              fill: true
+            },
+            {
+              label: 'GA4 Pass Rate',
+              data: [96, 97, 98, 97, 99, 98, 98.5],
+              borderColor: '#818cf8',
+              backgroundColor: 'transparent',
+              tension: 0.3,
+              borderDash: [5, 5]
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            x: { grid: { color: '#1e293b' }, ticks: { color: '#64748b' } },
+            y: { grid: { color: '#1e293b' }, ticks: { color: '#64748b' }, min: 80, max: 100 }
+          }
+        }
+      });
+
+      // 2. Vendor Breakdown Pie Chart
+      const ctxPie = document.getElementById('vendorPieChart').getContext('2d');
+      vendorChart = new Chart(ctxPie, {
+        type: 'doughnut',
+        data: {
+          labels: ['Adobe Analytics', 'Google GA4/GTM', 'Meta Pixel', 'OneTrust CMP'],
+          datasets: [{
+            data: [38, 42, 12, 8],
+            backgroundColor: ['#f43f5e', '#f59e0b', '#3b82f6', '#10b981'],
+            borderWidth: 0
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          cutout: '70%'
+        }
+      });
+    }
+
+    // Tab Navigation Switcher
+    function switchTab(tabId) {
+      document.querySelectorAll('.page-content').forEach(el => el.classList.add('hidden'));
+      document.querySelectorAll('.nav-btn').forEach(btn => {
+        btn.classList.remove('bg-slate-800', 'border-l-4', 'border-indigo-500', 'text-slate-200');
+        btn.classList.add('text-slate-400');
+      });
+
+      const activePage = document.getElementById(`page-${tabId}`);
+      if (activePage) activePage.classList.remove('hidden');
+
+      const activeNav = document.getElementById(`nav-${tabId}`);
+      if (activeNav) {
+        activeNav.classList.add('bg-slate-800', 'border-l-4', 'border-indigo-500', 'text-slate-200');
+        activeNav.classList.remove('text-slate-400');
+      }
+    }
+
+    // Inspector Deep-Link Handler
+    function inspectUrl(url, vendor) {
+      switchTab('inspector');
+      const select = document.getElementById('inspectorUrlSelect');
+      if (select) {
+        select.selectedIndex = 0;
+        updateInspectorView();
+      }
+    }
+
+    // Live Web Crawler Simulation
+    let crawlInterval = null;
+    function startCrawlSimulation() {
+      const badge = document.getElementById('scanStatusBadge');
+      const activeCrawlBadge = document.getElementById('activeCrawlBadge');
+      const bar = document.getElementById('progressBar');
+      const percentText = document.getElementById('progressPercent');
+      const pagesCount = document.getElementById('pagesCount');
+      const beaconsCount = document.getElementById('beaconsCount');
+      const crawlViolationsCount = document.getElementById('crawlViolationsCount');
+      const log = document.getElementById('terminalLog');
+
+      if (crawlInterval) clearInterval(crawlInterval);
+
+      badge.textContent = 'SCANNING...';
+      badge.className = 'bg-emerald-950 text-emerald-400 text-xs px-2.5 py-1 rounded-full font-mono border border-emerald-800 animate-pulse';
+      activeCrawlBadge.classList.remove('hidden');
+
+      let progress = 0;
+      let pages = 0;
+      let beacons = 0;
+      let violations = 0;
+
+      log.innerHTML = `<div class="text-indigo-400">[START] Initializing Puppeteer headless workers (12 threads)...</div>`;
+
+      crawlInterval = setInterval(() => {
+        progress += 4;
+        pages += Math.floor(Math.random() * 5) + 1;
+        beacons += Math.floor(Math.random() * 40) + 10;
+        if (Math.random() > 0.7) violations += 1;
+
+        if (progress > 100) progress = 100;
+
+        bar.style.width = `${progress}%`;
+        percentText.textContent = `${progress}%`;
+        pagesCount.textContent = pages;
+        beaconsCount.textContent = beacons;
+        crawlViolationsCount.textContent = violations;
+
+        const timestamp = new Date().toLocaleTimeString();
+        log.innerHTML += `<div><span class="text-slate-600">[${timestamp}]</span> Audited page #${pages}: <span class="text-slate-300">/checkout/step-${pages}</span> (${beacons} beacons captured)</div>`;
+        log.scrollTop = log.scrollHeight;
+
+        if (progress >= 100) {
+          clearInterval(crawlInterval);
+          badge.textContent = 'COMPLETED';
+          badge.className = 'bg-slate-800 text-slate-300 text-xs px-2.5 py-1 rounded-full font-mono border border-slate-700';
+          activeCrawlBadge.classList.add('hidden');
+          log.innerHTML += `<div class="text-emerald-400 font-bold">[FINISHED] Audit scan completed. Total pages: ${pages}, Violations: ${violations}</div>`;
+        }
+      }, 300);
+    }
+
+    function triggerQuickCrawl() {
+      switchTab('crawler');
+      startCrawlSimulation();
+    }
+
+    // Inspector Inner Tabs
+    function switchInspectorTab(tabName) {
+      ['payload', 'datalayer', 'raw'].forEach(t => {
+        document.getElementById(`view-${t}`).classList.add('hidden');
+        document.getElementById(`tab-${t}`).className = 'px-3 py-1.5 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700';
+      });
+
+      document.getElementById(`view-${tabName}`).classList.remove('hidden');
+      document.getElementById(`tab-${tabName}`).className = 'px-3 py-1.5 rounded-lg bg-indigo-600 text-white';
+    }
+
+    function updateInspectorView() {
+      // Refresh state mock logic
+    }
+
+    // Modal Handlers
+    function openRuleModal() {
+      document.getElementById('ruleModal').classList.remove('hidden');
+    }
+    function closeRuleModal() {
+      document.getElementById('ruleModal').classList.add('hidden');
+    }
+  </script>
+</body>
+
+</html>

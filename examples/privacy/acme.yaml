@@ -1,0 +1,61 @@
+version: 1
+name: "Acme privacy policy"
+description: "GDPR / CCPA / ePrivacy compliance baseline for acme.com"
+
+regulations:
+  - gdpr
+  - ccpa
+  - eprivacy
+
+cookie_rules:
+  # Analytics cookies -> analytics, must not fire before consent.
+  - name_pattern: "^_ga"
+    category: analytics
+  - name_pattern: "^_gid"
+    category: analytics
+  # Advertising cookie -> sale/share under CCPA.
+  - name_pattern: "^_fbp"
+    category: advertising
+  # Session cookie is strictly necessary.
+  - name_pattern: "(?i)^(sid|session)"
+    essential: true
+
+subject_rights:
+  - id: access
+    name: "Right of access"
+    url_pattern: "(?i)/(privacy|data)-request"
+  - id: deletion
+    name: "Right to erasure"
+    url_pattern: "(?i)/(delete|erasure)$"
+
+settings:
+  consent_states: [accept_all, reject_all, necessary_only, gpc]
+
+  # Categories and cookies allowed without consent.
+  essential_categories: [consent]
+  essential_cookies: [csrf_token]
+  essential_cookie_patterns: ["^__Host-"]
+  essential_hosts: [cdn.acme.com]
+
+  # Category groupings.
+  marketing_categories: [advertising, social]
+  sale_categories: [advertising]
+
+  # Consent management platform fingerprints.
+  cmp_tags: [onetrust, cookiebot, usercentrics]
+
+  # CCPA "Do Not Sell or Share" mechanisms.
+  opt_out_url_patterns: ["(?i)do-not-sell", "(?i)/opt-out"]
+
+  # Hosts that imply a transfer outside the home region.
+  cross_border_hosts: [example-cdn.net, adnetwork.io]
+
+  # Data Protection Impact Assessment triggers.
+  dpia:
+    - id: large-scale-tracking
+      description: "large-scale behavioural tracking"
+      categories: [advertising, social]
+      min_trackers: 5
+
+  # Every regulation must score 100 to pass.
+  pass_threshold: 100

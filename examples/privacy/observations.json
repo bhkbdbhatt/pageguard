@@ -1,0 +1,102 @@
+{
+  "accept_all": {
+    "url": "https://acme.com/",
+    "finalUrl": "https://acme.com/",
+    "bannerPresent": true,
+    "bannerHasReject": true,
+    "bannerHasSettings": true,
+    "gpcRespected": true,
+    "tags": [
+      { "id": "google-tag-manager", "vendor": "Google", "name": "Google Tag Manager", "category": "tag_manager", "evidence": "script src", "confidence": 0.99 },
+      { "id": "onetrust", "vendor": "OneTrust", "name": "OneTrust CMP", "category": "consent", "evidence": "consent api", "confidence": 0.95 },
+      { "id": "google-analytics-4", "vendor": "Google", "name": "Google Analytics 4", "category": "analytics", "evidence": "gtag", "confidence": 0.98 }
+    ],
+    "cookies": [
+      { "name": "sid", "domain": "acme.com", "path": "/", "valueHash": "h1", "secure": true, "httpOnly": true, "sameSite": "Lax", "session": true, "firstParty": true },
+      { "name": "csrf_token", "domain": "acme.com", "path": "/", "valueHash": "h2", "secure": true, "httpOnly": true, "sameSite": "Strict", "session": true, "firstParty": true },
+      { "name": "_ga", "domain": "acme.com", "path": "/", "valueHash": "h3", "secure": true, "sameSite": "Lax", "firstParty": true }
+    ],
+    "requests": [
+      { "method": "GET", "url": "https://acme.com/", "host": "acme.com", "status": 200, "resourceType": "document", "thirdParty": false },
+      { "method": "GET", "url": "https://cdn.acme.com/app.js", "host": "cdn.acme.com", "status": 200, "resourceType": "script", "thirdParty": false },
+      { "method": "GET", "url": "https://www.googletagmanager.com/gtm.js", "host": "www.googletagmanager.com", "status": 200, "resourceType": "script", "thirdParty": true }
+    ],
+    "links": [
+      "https://acme.com/privacy-request",
+      "https://acme.com/erasure",
+      "https://acme.com/do-not-sell"
+    ]
+  },
+  "reject_all": {
+    "url": "https://acme.com/",
+    "finalUrl": "https://acme.com/",
+    "bannerPresent": true,
+    "bannerHasReject": true,
+    "bannerHasSettings": true,
+    "gpcRespected": true,
+    "tags": [
+      { "id": "onetrust", "vendor": "OneTrust", "name": "OneTrust CMP", "category": "consent", "evidence": "consent api", "confidence": 0.95 }
+    ],
+    "cookies": [
+      { "name": "sid", "domain": "acme.com", "path": "/", "valueHash": "h1", "secure": true, "httpOnly": true, "sameSite": "Lax", "session": true, "firstParty": true },
+      { "name": "csrf_token", "domain": "acme.com", "path": "/", "valueHash": "h2", "secure": true, "httpOnly": true, "sameSite": "Strict", "session": true, "firstParty": true }
+    ],
+    "requests": [
+      { "method": "GET", "url": "https://acme.com/", "host": "acme.com", "status": 200, "resourceType": "document", "thirdParty": false },
+      { "method": "GET", "url": "https://cdn.acme.com/app.js", "host": "cdn.acme.com", "status": 200, "resourceType": "script", "thirdParty": false }
+    ],
+    "links": [
+      "https://acme.com/privacy-request",
+      "https://acme.com/erasure",
+      "https://acme.com/do-not-sell"
+    ]
+  },
+  "necessary_only": {
+    "url": "https://acme.com/",
+    "finalUrl": "https://acme.com/",
+    "bannerPresent": true,
+    "bannerHasReject": true,
+    "bannerHasSettings": true,
+    "gpcRespected": true,
+    "tags": [
+      { "id": "onetrust", "vendor": "OneTrust", "name": "OneTrust CMP", "category": "consent", "evidence": "consent api", "confidence": 0.95 }
+    ],
+    "cookies": [
+      { "name": "sid", "domain": "acme.com", "path": "/", "valueHash": "h1", "secure": true, "httpOnly": true, "sameSite": "Lax", "session": true, "firstParty": true },
+      { "name": "csrf_token", "domain": "acme.com", "path": "/", "valueHash": "h2", "secure": true, "httpOnly": true, "sameSite": "Strict", "session": true, "firstParty": true }
+    ],
+    "requests": [
+      { "method": "GET", "url": "https://acme.com/", "host": "acme.com", "status": 200, "resourceType": "document", "thirdParty": false },
+      { "method": "GET", "url": "https://cdn.acme.com/app.js", "host": "cdn.acme.com", "status": 200, "resourceType": "script", "thirdParty": false }
+    ],
+    "links": [
+      "https://acme.com/privacy-request",
+      "https://acme.com/erasure",
+      "https://acme.com/do-not-sell"
+    ]
+  },
+  "gpc": {
+    "url": "https://acme.com/",
+    "finalUrl": "https://acme.com/",
+    "bannerPresent": true,
+    "bannerHasReject": true,
+    "bannerHasSettings": true,
+    "gpcRespected": true,
+    "tags": [
+      { "id": "onetrust", "vendor": "OneTrust", "name": "OneTrust CMP", "category": "consent", "evidence": "consent api", "confidence": 0.95 }
+    ],
+    "cookies": [
+      { "name": "sid", "domain": "acme.com", "path": "/", "valueHash": "h1", "secure": true, "httpOnly": true, "sameSite": "Lax", "session": true, "firstParty": true },
+      { "name": "csrf_token", "domain": "acme.com", "path": "/", "valueHash": "h2", "secure": true, "httpOnly": true, "sameSite": "Strict", "session": true, "firstParty": true }
+    ],
+    "requests": [
+      { "method": "GET", "url": "https://acme.com/", "host": "acme.com", "status": 200, "resourceType": "document", "thirdParty": false },
+      { "method": "GET", "url": "https://cdn.acme.com/app.js", "host": "cdn.acme.com", "status": 200, "resourceType": "script", "thirdParty": false }
+    ],
+    "links": [
+      "https://acme.com/privacy-request",
+      "https://acme.com/erasure",
+      "https://acme.com/do-not-sell"
+    ]
+  }
+}

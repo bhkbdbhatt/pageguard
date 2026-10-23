@@ -1,0 +1,167 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pageguard.dev/schemas/scanresult.schema.json",
+  "title": "Pageguard ScanResult",
+  "description": "Structured, per-page evidence record emitted by the Pageguard scan orchestrator. A ScanResult is keyed by (runId, url) and doubles as the resumable per-page checkpoint.",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "runId",
+    "scanId",
+    "pageId",
+    "url",
+    "finalUrl",
+    "depth",
+    "statusCode",
+    "rendered",
+    "renderMode",
+    "startedAt",
+    "finishedAt",
+    "durationMs",
+    "requests",
+    "cookies",
+    "console",
+    "dataLayer",
+    "tags",
+    "links"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": {
+      "type": "string",
+      "description": "ScanResult schema version; a change is a breaking change.",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "runId": { "$ref": "#/$defs/id" },
+    "scanId": { "$ref": "#/$defs/id" },
+    "pageId": { "$ref": "#/$defs/id" },
+    "url": { "type": "string", "format": "uri-reference" },
+    "finalUrl": { "type": "string", "format": "uri-reference" },
+    "depth": { "type": "integer", "minimum": 0 },
+    "attempt": { "type": "integer", "minimum": 1 },
+    "resumed": {
+      "type": "boolean",
+      "description": "True when reconstructed from a checkpoint rather than freshly scanned."
+    },
+    "statusCode": { "type": "integer" },
+    "contentType": { "type": "string" },
+    "title": { "type": "string" },
+    "rendered": { "type": "boolean" },
+    "renderMode": { "type": "string", "enum": ["http", "browser", "auto"] },
+    "geolocation": {
+      "type": "string",
+      "description": "Logical region the page was observed from (cross-border evidence)."
+    },
+    "proxyHost": {
+      "type": "string",
+      "description": "Host:port of the proxy used, with credentials stripped."
+    },
+    "startedAt": { "type": "string", "format": "date-time" },
+    "finishedAt": { "type": "string", "format": "date-time" },
+    "durationMs": { "type": "integer", "minimum": 0 },
+    "dom": {
+      "type": "string",
+      "description": "Serialized document (post-JavaScript when browser-rendered)."
+    },
+    "domTruncated": { "type": "boolean" },
+    "domBytes": { "type": "integer", "minimum": 0 },
+    "requests": { "type": "array", "items": { "$ref": "#/$defs/networkRequest" } },
+    "cookies": { "type": "array", "items": { "$ref": "#/$defs/cookie" } },
+    "console": { "type": "array", "items": { "$ref": "#/$defs/consoleMessage" } },
+    "dataLayer": { "type": "array", "items": { "$ref": "#/$defs/dataLayerEntry" } },
+    "har": {
+      "type": ["object", "null"],
+      "description": "Raw HAR 1.2 network archive (browser-rendered scans with captureHar)."
+    },
+    "tags": { "type": "array", "items": { "$ref": "#/$defs/tag" } },
+    "links": {
+      "type": "array",
+      "items": { "type": "string", "format": "uri-reference" },
+      "description": "Outbound document links discovered for crawling."
+    },
+    "metaDescription": { "type": "string" },
+    "error": { "type": "string" }
+  },
+  "$defs": {
+    "id": {
+      "type": "string",
+      "description": "Pageguard identifier: 32 lowercase hex characters.",
+      "pattern": "^[0-9a-f]{32}$"
+    },
+    "networkRequest": {
+      "type": "object",
+      "required": ["method", "url", "host", "status", "resourceType"],
+      "properties": {
+        "method": { "type": "string" },
+        "url": { "type": "string", "format": "uri-reference" },
+        "host": { "type": "string" },
+        "status": { "type": "integer" },
+        "resourceType": { "type": "string" },
+        "initiator": { "type": "string" },
+        "requestHeaders": {
+          "type": "object",
+          "additionalProperties": { "type": "string" }
+        },
+        "responseHeaders": {
+          "type": "object",
+          "additionalProperties": { "type": "string" }
+        },
+        "startedAtMs": { "type": "integer" },
+        "durationMs": { "type": "integer" },
+        "sizeBytes": { "type": "integer" },
+        "thirdParty": { "type": "boolean" }
+      }
+    },
+    "cookie": {
+      "type": "object",
+      "required": ["name", "domain", "path", "valueHash", "secure", "httpOnly", "sameSite", "session", "firstParty"],
+      "properties": {
+        "name": { "type": "string" },
+        "domain": { "type": "string" },
+        "path": { "type": "string" },
+        "valueHash": {
+          "type": "string",
+          "description": "Short, non-reversible digest; raw cookie values are never persisted."
+        },
+        "secure": { "type": "boolean" },
+        "httpOnly": { "type": "boolean" },
+        "sameSite": { "type": "string" },
+        "expiresUnix": { "type": "integer" },
+        "session": { "type": "boolean" },
+        "firstParty": { "type": "boolean" }
+      }
+    },
+    "consoleMessage": {
+      "type": "object",
+      "required": ["level", "text"],
+      "properties": {
+        "level": { "type": "string" },
+        "text": { "type": "string" }
+      }
+    },
+    "dataLayerEntry": {
+      "type": "object",
+      "required": ["name"],
+      "properties": {
+        "name": { "type": "string" },
+        "value": {
+          "type": "string",
+          "description": "Raw JSON of the variable, as a string."
+        }
+      }
+    },
+    "tag": {
+      "type": "object",
+      "required": ["id", "vendor", "name", "category", "evidence", "confidence"],
+      "properties": {
+        "id": { "type": "string" },
+        "vendor": { "type": "string" },
+        "name": { "type": "string" },
+        "category": { "type": "string" },
+        "version": { "type": "string" },
+        "evidence": { "type": "string" },
+        "confidence": { "type": "number", "minimum": 0, "maximum": 1 }
+      }
+    }
+  }
+}

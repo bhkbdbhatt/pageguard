@@ -1,0 +1,141 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pageguard.dev/schemas/tagpolicy.schema.json",
+  "title": "Pageguard TagPolicy",
+  "description": "A user-authored tag validation policy consumed by the tagpolicy engine. Policies may be written in YAML or JSON; both are validated against this schema.",
+  "type": "object",
+  "required": ["version", "name"],
+  "additionalProperties": false,
+  "properties": {
+    "version": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Policy language version."
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Human-readable policy name."
+    },
+    "description": { "type": "string" },
+    "settings": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "unexpected_tags": { "$ref": "#/$defs/severityOrOff" },
+        "duplicate_tags": { "$ref": "#/$defs/severityOrOff" },
+        "unexpected_cookies": { "$ref": "#/$defs/severityOrOff" },
+        "max_occurrences": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "must_exist": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/expectation" }
+    },
+    "must_not_exist": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/expectation" }
+    },
+    "value_rules": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/valueRule" }
+    },
+    "consent_requirements": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "require_cmp": { "type": "boolean" },
+        "cmp_tags": { "type": "array", "items": { "type": "string" } },
+        "gated_categories": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/category" }
+        },
+        "gated_cookie_categories": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "severity": { "$ref": "#/$defs/severity" }
+      }
+    }
+  },
+  "$defs": {
+    "severity": {
+      "type": "string",
+      "enum": ["info", "low", "medium", "high", "critical"]
+    },
+    "severityOrOff": {
+      "type": "string",
+      "enum": ["off", "info", "low", "medium", "high", "critical"]
+    },
+    "category": {
+      "type": "string",
+      "enum": ["analytics", "advertising", "social", "tag_manager", "cdp", "consent", "monitoring", "unknown"]
+    },
+    "target": {
+      "type": "string",
+      "enum": ["tag", "request", "cookie", "event"]
+    },
+    "match": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "tag": { "type": "string" },
+        "tag_pattern": { "type": "string" },
+        "name": { "type": "string" },
+        "name_pattern": { "type": "string" },
+        "category": { "$ref": "#/$defs/category" },
+        "url_pattern": { "type": "string" },
+        "host": { "type": "string" },
+        "domain": { "type": "string" },
+        "event": { "type": "string" }
+      }
+    },
+    "cookieAttributes": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "secure": { "type": "boolean" },
+        "httpOnly": { "type": "boolean" },
+        "sameSite": { "type": "array", "items": { "type": "string" } },
+        "firstParty": { "type": "boolean" },
+        "session": { "type": "boolean" },
+        "category": { "type": "string" }
+      }
+    },
+    "expectation": {
+      "type": "object",
+      "required": ["id", "target", "match"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "description": { "type": "string" },
+        "severity": { "$ref": "#/$defs/severity" },
+        "target": { "$ref": "#/$defs/target" },
+        "match": { "$ref": "#/$defs/match" },
+        "attributes": { "$ref": "#/$defs/cookieAttributes" }
+      }
+    },
+    "valueRule": {
+      "type": "object",
+      "required": ["id", "variable"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "description": { "type": "string" },
+        "severity": { "$ref": "#/$defs/severity" },
+        "variable": { "type": "string", "minLength": 1 },
+        "type": {
+          "type": "string",
+          "enum": ["string", "number", "integer", "boolean", "object", "array", "null"]
+        },
+        "enum": { "type": "array" },
+        "min": { "type": "number" },
+        "max": { "type": "number" },
+        "pattern": { "type": "string" },
+        "required": { "type": "boolean" },
+        "when_event": { "type": "string" },
+        "required_if_event": { "type": "string" }
+      }
+    }
+  }
+}

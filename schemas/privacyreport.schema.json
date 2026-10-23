@@ -1,0 +1,128 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pageguard.dev/schemas/privacyreport.schema.json",
+  "title": "Pageguard Privacy Compliance Report",
+  "description": "The result of evaluating a privacy policy against a page across every simulated consent state. It reports a per-regulation breakdown of checks, a 0-100 score for each regulation, an overall verdict, and advisory flags such as DPIA or cross-border-transfer observations.",
+  "type": "object",
+  "required": ["schemaVersion", "policyName", "url", "generatedAt", "score", "passed", "summary", "states", "regulations"],
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": { "type": "string", "const": "1.0.0" },
+    "policyName": { "type": "string" },
+    "url": { "type": "string" },
+    "generatedAt": { "type": "string", "format": "date-time" },
+    "score": { "type": "integer", "minimum": 0, "maximum": 100 },
+    "passed": { "type": "boolean" },
+    "summary": { "$ref": "#/$defs/summary" },
+    "states": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/stateResult" }
+    },
+    "regulations": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/regulationReport" }
+    },
+    "flags": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/flag" }
+    }
+  },
+  "$defs": {
+    "regulation": {
+      "type": "string",
+      "enum": ["gdpr", "ccpa", "lgpd", "eprivacy"]
+    },
+    "severity": {
+      "type": "string",
+      "enum": ["info", "low", "medium", "high", "critical"]
+    },
+    "checkStatus": {
+      "type": "string",
+      "enum": ["pass", "fail", "skipped"]
+    },
+    "summary": {
+      "type": "object",
+      "required": ["regulations", "passed", "failed", "violations", "flags"],
+      "additionalProperties": false,
+      "properties": {
+        "regulations": { "type": "integer", "minimum": 0 },
+        "passed": { "type": "integer", "minimum": 0 },
+        "failed": { "type": "integer", "minimum": 0 },
+        "violations": { "type": "integer", "minimum": 0 },
+        "flags": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "tracker": {
+      "type": "object",
+      "required": ["kind", "id"],
+      "additionalProperties": false,
+      "properties": {
+        "kind": { "type": "string", "enum": ["tag", "cookie", "request"] },
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "category": { "type": "string" },
+        "host": { "type": "string" }
+      }
+    },
+    "stateResult": {
+      "type": "object",
+      "required": ["state", "blocked"],
+      "additionalProperties": false,
+      "properties": {
+        "state": { "type": "string", "enum": ["accept_all", "reject_all", "necessary_only", "gpc"] },
+        "blocked": { "type": "boolean" },
+        "trackersFired": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/tracker" }
+        },
+        "cookiesSet": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "thirdPartyHosts": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "check": {
+      "type": "object",
+      "required": ["id", "status", "severity"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string" },
+        "status": { "$ref": "#/$defs/checkStatus" },
+        "severity": { "$ref": "#/$defs/severity" },
+        "message": { "type": "string" },
+        "evidence": { "type": "object" }
+      }
+    },
+    "regulationReport": {
+      "type": "object",
+      "required": ["regulation", "score", "passed", "checks"],
+      "additionalProperties": false,
+      "properties": {
+        "regulation": { "$ref": "#/$defs/regulation" },
+        "score": { "type": "integer", "minimum": 0, "maximum": 100 },
+        "passed": { "type": "boolean" },
+        "checks": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/check" }
+        }
+      }
+    },
+    "flag": {
+      "type": "object",
+      "required": ["id", "severity", "title"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string" },
+        "regulation": { "$ref": "#/$defs/regulation" },
+        "severity": { "$ref": "#/$defs/severity" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "evidence": { "type": "object" }
+      }
+    }
+  }
+}

@@ -1,0 +1,15 @@
+.git
+.gitignore
+*.md
+docs
+web/node_modules
+web/.next
+sdk-ts/node_modules
+sdk-ts/dist
+tools/browser-renderer/node_modules
+bin
+dist
+tmp
+data
+.env
+.env.local

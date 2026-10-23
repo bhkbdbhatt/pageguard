@@ -1,0 +1,126 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pageguard.dev/schemas/journeyreport.schema.json",
+  "title": "Pageguard JourneyReport",
+  "description": "The step-by-step result of running a journey. Produced by the journey engine and rendered by the JSON or text formatter.",
+  "type": "object",
+  "required": ["schemaVersion", "journey", "startedAt", "finishedAt", "durationMs", "passed", "summary", "steps"],
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": { "type": "string" },
+    "journey": { "type": "string" },
+    "startedAt": { "type": "string", "format": "date-time" },
+    "finishedAt": { "type": "string", "format": "date-time" },
+    "durationMs": { "type": "integer" },
+    "passed": { "type": "boolean" },
+    "summary": { "$ref": "#/$defs/summary" },
+    "steps": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/stepResult" }
+    }
+  },
+  "$defs": {
+    "summary": {
+      "type": "object",
+      "required": ["steps", "passed", "failed"],
+      "additionalProperties": false,
+      "properties": {
+        "steps": { "type": "integer" },
+        "passed": { "type": "integer" },
+        "failed": { "type": "integer" }
+      }
+    },
+    "status": {
+      "type": "string",
+      "enum": ["pass", "fail", "error"]
+    },
+    "checkStatus": {
+      "type": "string",
+      "enum": ["pass", "fail"]
+    },
+    "checkResult": {
+      "type": "object",
+      "required": ["name", "status"],
+      "additionalProperties": false,
+      "properties": {
+        "name": { "type": "string" },
+        "status": { "$ref": "#/$defs/checkStatus" },
+        "message": { "type": "string" },
+        "expected": {},
+        "actual": {}
+      }
+    },
+    "networkRequest": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "method": { "type": "string" },
+        "url": { "type": "string" },
+        "host": { "type": "string" },
+        "status": { "type": "integer" },
+        "resourceType": { "type": "string" },
+        "thirdParty": { "type": "boolean" }
+      }
+    },
+    "consoleMessage": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "level": { "type": "string" },
+        "text": { "type": "string" }
+      }
+    },
+    "cookie": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "name": { "type": "string" },
+        "domain": { "type": "string" },
+        "secure": { "type": "boolean" },
+        "httpOnly": { "type": "boolean" },
+        "sameSite": { "type": "string" },
+        "firstParty": { "type": "boolean" }
+      }
+    },
+    "tag": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "vendor": { "type": "string" },
+        "category": { "type": "string" },
+        "confidence": { "type": "number" }
+      }
+    },
+    "diff": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "newRequests": { "type": "array", "items": { "$ref": "#/$defs/networkRequest" } },
+        "newConsole": { "type": "array", "items": { "$ref": "#/$defs/consoleMessage" } },
+        "newCookies": { "type": "array", "items": { "$ref": "#/$defs/cookie" } },
+        "newTags": { "type": "array", "items": { "$ref": "#/$defs/tag" } },
+        "newEvents": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "stepResult": {
+      "type": "object",
+      "required": ["index", "action", "status", "diff"],
+      "additionalProperties": false,
+      "properties": {
+        "index": { "type": "integer", "minimum": 0 },
+        "action": { "type": "string" },
+        "selector": { "type": "string" },
+        "description": { "type": "string" },
+        "status": { "$ref": "#/$defs/status" },
+        "message": { "type": "string" },
+        "error": { "type": "string" },
+        "durationMs": { "type": "integer" },
+        "checks": { "type": "array", "items": { "$ref": "#/$defs/checkResult" } },
+        "diff": { "$ref": "#/$defs/diff" },
+        "screenshot": { "type": "string" }
+      }
+    }
+  }
+}

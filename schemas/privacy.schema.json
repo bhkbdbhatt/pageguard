@@ -1,0 +1,123 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pageguard.dev/schemas/privacy.schema.json",
+  "title": "Pageguard Privacy Policy",
+  "description": "A user-authored privacy compliance policy. It declares which regulations to evaluate, how to classify cookies and third-party hosts, and the inputs (CMP signals, subject rights, DPIA triggers, cross-border hosts, opt-out patterns) used by the privacy engine. Policies may be written in YAML or JSON; both are validated against this schema.",
+  "type": "object",
+  "required": ["name"],
+  "additionalProperties": false,
+  "properties": {
+    "version": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Policy language version."
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Human-readable policy name."
+    },
+    "description": { "type": "string" },
+    "regulations": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/regulation" },
+      "description": "Regulations to evaluate. Defaults to all supported regimes."
+    },
+    "cookie_rules": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/cookieRule" }
+    },
+    "subject_rights": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/subjectRight" }
+    },
+    "settings": { "$ref": "#/$defs/settings" }
+  },
+  "$defs": {
+    "regulation": {
+      "type": "string",
+      "enum": ["gdpr", "ccpa", "lgpd", "eprivacy"]
+    },
+    "tagCategory": {
+      "type": "string",
+      "enum": ["analytics", "advertising", "social", "tag_manager", "cdp", "consent", "monitoring", "unknown"]
+    },
+    "consentState": {
+      "type": "string",
+      "enum": ["accept_all", "reject_all", "necessary_only", "gpc"]
+    },
+    "cookieRule": {
+      "type": "object",
+      "required": ["name_pattern"],
+      "additionalProperties": false,
+      "properties": {
+        "name_pattern": { "type": "string", "description": "Regular expression matched against the cookie name." },
+        "category": { "$ref": "#/$defs/tagCategory" },
+        "essential": { "type": "boolean" }
+      }
+    },
+    "subjectRight": {
+      "type": "object",
+      "required": ["id", "url_pattern"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "name": { "type": "string" },
+        "url_pattern": { "type": "string", "description": "Regular expression matched against URLs and links." }
+      }
+    },
+    "dpiaTrigger": {
+      "type": "object",
+      "required": ["id"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "description": { "type": "string" },
+        "categories": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/tagCategory" }
+        },
+        "min_trackers": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "settings": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "consent_states": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/consentState" }
+        },
+        "essential_categories": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/tagCategory" }
+        },
+        "essential_cookies": { "type": "array", "items": { "type": "string" } },
+        "essential_cookie_patterns": { "type": "array", "items": { "type": "string" } },
+        "essential_hosts": { "type": "array", "items": { "type": "string" } },
+        "marketing_categories": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/tagCategory" }
+        },
+        "sale_categories": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/tagCategory" }
+        },
+        "dpia": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/dpiaTrigger" }
+        },
+        "cross_border_hosts": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "opt_out_url_patterns": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "track_third_party_requests": { "type": "boolean" },
+        "pass_threshold": { "type": "integer", "minimum": 0, "maximum": 100 }
+      }
+    }
+  }
+}

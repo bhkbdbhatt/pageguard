@@ -1,0 +1,27 @@
+# Binaries
+/bin/
+/dist/
+*.exe
+*.test
+*.out
+
+# Node / Next.js
+node_modules/
+web/.next/
+web/out/
+sdk-ts/dist/
+
+# Env / secrets
+.env
+.env.local
+*.pem
+
+# Editor / OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Local data
+/data/
+/tmp/

@@ -1,0 +1,12 @@
+{
+  "id": "example-node-validator",
+  "name": "Example Node Validator",
+  "version": "0.1.0",
+  "kind": "validator",
+  "runtime": "node",
+  "entry": "index.mjs",
+  "description": "Out-of-process TypeScript/JavaScript validator example.",
+  "author": "Pageguard",
+  "license": "MIT",
+  "permissions": []
+}

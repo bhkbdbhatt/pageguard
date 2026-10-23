@@ -1,0 +1,20 @@
+{
+  "name": "@pageguard/browser-renderer",
+  "version": "0.1.0",
+  "description": "Headless-browser worker that the Pageguard scanner drives over stdio.",
+  "license": "MIT",
+  "type": "module",
+  "private": true,
+  "bin": {
+    "pageguard-browser-renderer": "./index.mjs"
+  },
+  "scripts": {
+    "start": "node index.mjs"
+  },
+  "dependencies": {
+    "playwright": "^1.47.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

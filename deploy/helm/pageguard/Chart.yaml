@@ -1,0 +1,11 @@
+apiVersion: v2
+name: pageguard
+description: Web governance and martech auditing platform (API + scanner workers)
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+homepage: https://github.com/pageguard/pageguard
+sources:
+  - https://github.com/pageguard/pageguard
+maintainers:
+  - name: Pageguard

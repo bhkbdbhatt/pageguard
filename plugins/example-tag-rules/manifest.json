@@ -1,0 +1,45 @@
+{
+  "id": "example-tag-rules",
+  "name": "Example Tag & Privacy Rules",
+  "version": "0.1.0",
+  "kind": "validator",
+  "runtime": "builtin",
+  "description": "Declarative rules demonstrating required-tag and cookie checks.",
+  "author": "Pageguard",
+  "license": "MIT",
+  "rules": [
+    {
+      "id": "example.gtm-required",
+      "title": "Google Tag Manager is not installed",
+      "description": "The page does not load Google Tag Manager.",
+      "severity": "high",
+      "category": "martech",
+      "remediation": "Add the GTM container snippet to the document head.",
+      "condition": {
+        "none": [{ "field": "tag", "name": "google-tag-manager", "op": "exists" }]
+      }
+    },
+    {
+      "id": "example.consent-required",
+      "title": "No consent management platform detected",
+      "description": "No recognised consent tool (e.g. OneTrust) was observed.",
+      "severity": "medium",
+      "category": "privacy",
+      "remediation": "Deploy a consent management platform before loading marketing tags.",
+      "condition": {
+        "none": [{ "field": "tag", "name": "onetrust", "op": "exists" }]
+      }
+    },
+    {
+      "id": "example.cookie-secure-required",
+      "title": "Cookie set without the Secure flag",
+      "description": "A first-party cookie was observed without the Secure attribute.",
+      "severity": "medium",
+      "category": "security",
+      "remediation": "Set the Secure attribute on all cookies.",
+      "condition": {
+        "all": [{ "field": "cookieSecure", "name": "sid", "op": "eq", "value": false }]
+      }
+    }
+  ]
+}

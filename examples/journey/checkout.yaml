@@ -1,0 +1,65 @@
+version: 1
+name: "Checkout flow"
+description: "Add to cart, checkout and purchase for acme.com"
+base_url: "https://acme.com"
+
+defaults:
+  timeout_ms: 20000
+  wait_ms: 300
+
+session:
+  viewport:
+    width: 1366
+    height: 768
+  locale: en-US
+  timezone: America/New_York
+  capture_data_layer: true
+
+steps:
+  - action: navigate
+    description: Open the store home
+    value: /
+    expect:
+      status: 200
+      title_contains: Acme
+      tags: [google-tag-manager, google-analytics-4]
+      events: [page_view]
+
+  - action: click
+    description: Open the first product
+    selector: ".product-card a"
+    expect:
+      url_contains: /product/
+
+  - action: click
+    description: Add the product to the cart
+    selector: "button.add-to-cart"
+    expect:
+      events: [add_to_cart]
+
+  - action: navigate
+    description: Go to checkout
+    value: /checkout
+    expect:
+      url_contains: /checkout
+      absent_tags: [meta-pixel]
+
+  - action: fill
+    description: Enter the buyer email
+    selector: "#email"
+    value: "buyer@example.com"
+
+  - action: click
+    description: Place the order
+    selector: "button#place-order"
+    wait_ms: 500
+    expect:
+      url_contains: /order-confirmation
+      events: [purchase]
+      cookies: [sid]
+
+  - action: wait
+    description: Wait for the confirmation banner
+    selector: ".confirmation"
+    expect:
+      url_contains: /order-confirmation
