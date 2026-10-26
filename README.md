@@ -11,6 +11,8 @@ privacy promises you make.
 
 ## What works today
 
+[![Netlify Status](https://api.netlify.com/api/v1/badges/df0d5f9c-5322-4b72-9cbe-fa3c9a0c589e/deploy-status)](https://app.netlify.com/projects/pageguardone/deploys)
+
 This repository contains the **foundation** plus a complete, tested
 **Module 1 (Page Scanning)** implementation.
 
