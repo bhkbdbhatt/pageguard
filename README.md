@@ -5,7 +5,7 @@ sites, executes their client-side tags in a real browser, and validates what it
 finds against a plugin-based rule engine — so you can prove that every page
 loads the tags it should, stores only the cookies it should, and respects the
 privacy promises you make.
-
+[text](demo.webm)
 > Formerly scoped as "OpenObserve". Renamed to avoid collision with the
 > existing OpenObserve observability project.
 
@@ -122,6 +122,24 @@ per scan, and a sitemap tree of the crawled site, lets you cancel/resume runs,
 filter and search findings, and open a per-page evidence drawer (tags,
 third-party requests, cookies, console). Point it at a non-default API origin
 with `NEXT_PUBLIC_API_BASE`. See `docs/ui.md`.
+
+### Deploy on Netlify
+
+Netlify can host the Next.js dashboard, but not the Go API (it needs a
+long-running server, SSE/WebSocket streaming, Playwright, and PostgreSQL).
+
+1. Host the backend container (`Dockerfile`) on Render, Fly.io, Railway, or a
+   VPS with PostgreSQL, and expose it over HTTPS. `render.yaml` deploys the API
+   and database on Render in one step; see `docs/render-deploy.md`.
+2. In Netlify, import this repository. The root `netlify.toml` builds `web/`
+   with the Next.js runtime.
+3. Set `NEXT_PUBLIC_API_BASE=https://<api-host>` in Netlify before deploying;
+   the value is baked in at build time.
+4. Set `PAGEGUARD_CORS_ORIGINS=https://<your-site>.netlify.app` on the backend
+   and restart it.
+
+Full instructions, including Render and Fly.io examples, are in
+`docs/netlify-deploy.md`.
 
 ## Development
 

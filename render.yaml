@@ -1,0 +1,28 @@
+databases:
+  - name: pageguard-db
+    databaseName: pageguard
+    user: pageguard
+    plan: free
+
+services:
+  - type: web
+    name: pageguard-api
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /healthz
+    envVars:
+      - key: PAGEGUARD_ADDR
+        value: :10000
+      - key: PAGEGUARD_PLUGINS_DIR
+        value: /app/plugins
+      - key: PAGEGUARD_MIGRATIONS_DIR
+        value: /app/migrations
+      - key: PAGEGUARD_BROWSER_CMD
+        value: node /app/tools/browser-renderer/index.mjs
+      - key: DATABASE_URL
+        fromDatabase:
+          name: pageguard-db
+          property: connectionString
+      - key: PAGEGUARD_CORS_ORIGINS
+        sync: false
