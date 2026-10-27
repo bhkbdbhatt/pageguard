@@ -1,0 +1,771 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Pageguard — Open-source web governance and martech auditing</title>
+  <meta name="description" content="Pageguard crawls your sites in a real browser, executes client-side tags, and validates what it finds against policies you control. Prove every tag, cookie, and beacon — self-hosted and MIT licensed.">
+  <meta name="theme-color" content="#05070d">
+  <meta name="color-scheme" content="dark">
+  <meta property="og:title" content="Pageguard — open-source web governance">
+  <meta property="og:description" content="Crawl your sites, execute tags in a real browser, and prove what fired, what was stored, and what leaked before consent.">
+  <meta property="og:type" content="website">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="assets/styles.css">
+  <noscript><style>.reveal{opacity:1;transform:none}.tabs,.copy{display:none}.tabpanel[hidden]{display:block}.tabpanel{max-height:none}</style></noscript>
+  <script src="assets/main.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <header class="site-header">
+    <div class="wrap header-inner">
+      <a class="brand" href="#top" aria-label="Pageguard home">
+        <svg class="mark" viewBox="0 0 40 40" aria-hidden="true">
+          <defs>
+            <linearGradient id="markGradHeader" x1="0" y1="0" x2="40" y2="40" gradientUnits="userSpaceOnUse">
+              <stop stop-color="#818cf8"></stop>
+              <stop offset="1" stop-color="#10b981"></stop>
+            </linearGradient>
+          </defs>
+          <rect x="1" y="1" width="38" height="38" rx="11" fill="url(#markGradHeader)"></rect>
+          <path d="M20 8.5 28.5 12v7.3c0 5.9-3.7 10-8.5 12.2-4.8-2.2-8.5-6.3-8.5-12.2V12L20 8.5Z" fill="none" stroke="#fff" stroke-width="1.8" stroke-linejoin="round"></path>
+          <path d="m16 20 2.6 2.6L24.5 17" fill="none" stroke="#fff" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"></path>
+        </svg>
+        <span>Pageguard</span>
+      </a>
+
+      <nav class="nav" id="nav" aria-label="Primary">
+        <a href="#why">Product</a>
+        <a href="#how">How it works</a>
+        <a href="#capabilities">Capabilities</a>
+        <a href="#quickstart">Self-host</a>
+        <a href="#faq">FAQ</a>
+      </nav>
+
+      <div class="header-actions">
+        <a class="btn btn-ghost btn-sm header-github" href="https://github.com/bhkbdbhatt/openobserve" target="_blank" rel="noreferrer">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 .7a11.3 11.3 0 0 0-3.6 22c.6.1.8-.2.8-.6v-2c-3.2.7-3.9-1.4-3.9-1.4-.5-1.3-1.2-1.7-1.2-1.7-1-.7.1-.7.1-.7 1.1.1 1.7 1.1 1.7 1.1 1 1.7 2.6 1.2 3.2.9.1-.7.4-1.2.7-1.5-2.6-.3-5.3-1.3-5.3-5.8 0-1.3.5-2.3 1.1-3.1-.1-.3-.5-1.5.1-3.1 0 0 1-.3 3.2 1.2a11 11 0 0 1 5.8 0C17 4.8 18 5.1 18 5.1c.6 1.6.2 2.8.1 3.1.7.8 1.1 1.8 1.1 3.1 0 4.5-2.7 5.5-5.3 5.8.4.4.8 1.1.8 2.2v3.2c0 .4.2.7.8.6A11.3 11.3 0 0 0 12 .7Z"></path></svg>
+          GitHub
+        </a>
+        <a class="btn btn-primary btn-sm" href="#quickstart">Get started</a>
+        <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="nav" aria-label="Toggle navigation">
+          <span></span><span></span><span></span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main id="main">
+    <section class="hero" id="top">
+      <div class="wrap hero-grid">
+        <div class="hero-copy">
+          <p class="eyebrow"><span class="pulse" aria-hidden="true"></span> Open source · MIT licensed</p>
+          <h1>Prove every tag, cookie, and <span class="grad-text">beacon</span> on your site.</h1>
+          <p class="hero-lead">
+            Pageguard is web governance for the client side. It crawls your sites, runs their tags in a real browser,
+            and validates what it finds against policies you control — so martech, privacy, and engineering share one
+            source of truth.
+          </p>
+          <div class="hero-ctas">
+            <a class="btn btn-primary btn-lg" href="#quickstart">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 7 5 5-5 5M12 17h7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+              Start self-hosting
+            </a>
+            <a class="btn btn-ghost btn-lg" href="https://github.com/bhkbdbhatt/openobserve" target="_blank" rel="noreferrer">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 .7a11.3 11.3 0 0 0-3.6 22c.6.1.8-.2.8-.6v-2c-3.2.7-3.9-1.4-3.9-1.4-.5-1.3-1.2-1.7-1.2-1.7-1-.7.1-.7.1-.7 1.1.1 1.7 1.1 1.7 1.1 1 1.7 2.6 1.2 3.2.9.1-.7.4-1.2.7-1.5-2.6-.3-5.3-1.3-5.3-5.8 0-1.3.5-2.3 1.1-3.1-.1-.3-.5-1.5.1-3.1 0 0 1-.3 3.2 1.2a11 11 0 0 1 5.8 0C17 4.8 18 5.1 18 5.1c.6 1.6.2 2.8.1 3.1.7.8 1.1 1.8 1.1 3.1 0 4.5-2.7 5.5-5.3 5.8.4.4.8 1.1.8 2.2v3.2c0 .4.2.7.8.6A11.3 11.3 0 0 0 12 .7Z"></path></svg>
+              Star on GitHub
+            </a>
+          </div>
+          <ul class="trust">
+            <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 13 4 4L19 7" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"></path></svg> Go core, stdlib only</li>
+            <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 13 4 4L19 7" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"></path></svg> Playwright rendering</li>
+            <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 13 4 4L19 7" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"></path></svg> PostgreSQL + Helm</li>
+            <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 13 4 4L19 7" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"></path></svg> 100% self-hosted</li>
+          </ul>
+        </div>
+
+        <div class="hero-visual">
+          <div class="dash" role="img" aria-label="Pageguard dashboard preview showing health score, captured beacons, consent compliance, and validation findings">
+            <div class="dash-bar">
+              <span class="dots" aria-hidden="true"><i></i><i></i><i></i></span>
+              <span class="dash-url">pageguard · acme.com</span>
+              <span class="live">Live</span>
+            </div>
+            <div class="dash-body">
+              <div class="dash-top">
+                <div>
+                  <p class="eyebrow">Command center</p>
+                  <h3>Governance overview</h3>
+                </div>
+                <span class="pill">Latest audit · 142 pages</span>
+              </div>
+
+              <div class="kpis">
+                <div class="kpi">
+                  <span>Health score</span>
+                  <strong>98.2%</strong>
+                  <small>138 validated pages</small>
+                </div>
+                <div class="kpi">
+                  <span>Captured beacons</span>
+                  <strong>1,284</strong>
+                  <small>tracker-like requests</small>
+                </div>
+                <div class="kpi">
+                  <span>Critical anomalies</span>
+                  <strong>2</strong>
+                  <small>7 findings total</small>
+                </div>
+                <div class="kpi">
+                  <span>CMP compliance</span>
+                  <strong>96.0%</strong>
+                  <small>3 pre-consent leaks</small>
+                </div>
+              </div>
+
+              <div class="dash-grid">
+                <div class="panel">
+                  <h4>Health · last 7 days</h4>
+                  <div class="bars" aria-hidden="true">
+                    <i style="--h:48%"></i>
+                    <i style="--h:62%"></i>
+                    <i style="--h:55%"></i>
+                    <i style="--h:74%"></i>
+                    <i style="--h:68%"></i>
+                    <i style="--h:86%"></i>
+                    <i style="--h:98%"></i>
+                  </div>
+                </div>
+                <div class="panel">
+                  <h4>Vendors</h4>
+                  <div class="donut" aria-hidden="true"></div>
+                  <div class="legend" aria-hidden="true">
+                    <span><i style="background:#818cf8"></i>Google</span>
+                    <span><i style="background:#34d399"></i>Adobe</span>
+                    <span><i style="background:#38bdf8"></i>Meta</span>
+                    <span><i style="background:#fbbf24"></i>Other</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="findings" aria-hidden="true">
+                <div class="finding">
+                  <span class="sev ok"></span>
+                  <b>checkout.purchase</b>
+                  <span>event validated</span>
+                  <span class="vendor">GA4</span>
+                </div>
+                <div class="finding">
+                  <span class="sev high"></span>
+                  <b>currency-code</b>
+                  <span>value rule failed</span>
+                  <span class="vendor">DataLayer</span>
+                </div>
+                <div class="finding">
+                  <span class="sev crit"></span>
+                  <b>_ga cookie</b>
+                  <span>fired before consent</span>
+                  <span class="vendor">OneTrust</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="float-chip chip-a">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v18M3 12h18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"></path></svg>
+            Playwright render
+          </div>
+          <div class="float-chip chip-b">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 13 4 4L19 7" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+            MIT licensed
+          </div>
+        </div>
+      </div>
+
+      <div class="wrap">
+        <div class="vendor-band">
+          <p>Audits the martech you already ship</p>
+          <ul class="vendors">
+            <li style="--c:#818cf8">Google Tag Manager</li>
+            <li style="--c:#34d399">GA4</li>
+            <li style="--c:#fb7185">Adobe Analytics</li>
+            <li style="--c:#38bdf8">Meta Pixel</li>
+            <li style="--c:#a78bfa">Segment</li>
+            <li style="--c:#fbbf24">OneTrust</li>
+            <li style="--c:#2dd4bf">Cookiebot</li>
+            <li style="--c:#f472b6">Usercentrics</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="why">
+      <div class="wrap">
+        <div class="section-head reveal">
+          <p class="eyebrow">The gap</p>
+          <h2>Your tag layer ships blind.</h2>
+          <p>
+            Tags change in a CMS, a container, a consent banner, or one line of JavaScript. By the time reporting
+            breaks, the evidence is already gone.
+          </p>
+        </div>
+
+        <div class="cards-3">
+          <article class="card tone-rose reveal">
+            <div class="icon">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17 9 11l4 4 8-8M15 7h6v6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+            </div>
+            <h3>Tag drift goes unnoticed</h3>
+            <p>
+              A container is removed, a pixel is duplicated, an event stops firing. Pageguard records what actually
+              loads, page by page, so silent regressions surface before revenue reporting does.
+            </p>
+          </article>
+
+          <article class="card tone-amber reveal">
+            <div class="icon">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 3 20h18L12 3Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"></path><path d="M12 9v5M12 17h.01" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path></svg>
+            </div>
+            <h3>Consent promises don’t match reality</h3>
+            <p>
+              Trackers fire before the banner. Cookies appear that your policy forbids. Simulate accept, reject,
+              necessary-only, and GPC states — then see the exact requests that leaked.
+            </p>
+          </article>
+
+          <article class="card tone-sky reveal">
+            <div class="icon">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v14H4zM4 9h16M8 13h8M8 16h5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+            </div>
+            <h3>Audits live in screenshots and spreadsheets</h3>
+            <p>
+              A finding without an observation is an opinion. Every Pageguard finding carries the request, cookie,
+              tag, or data-layer event that produced it — exportable and reviewable.
+            </p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="section section-border" id="how">
+      <div class="wrap">
+        <div class="section-head reveal">
+          <p class="eyebrow">How it works</p>
+          <h2>From crawl to court-ready evidence.</h2>
+          <p>
+            Four stages, one engine. Run it in CI, on a schedule, or from the dashboard whenever the tag layer changes.
+          </p>
+        </div>
+
+        <div class="steps">
+          <article class="step reveal">
+            <span class="step-num">01</span>
+            <h3>Crawl</h3>
+            <p>
+              A breadth-first crawler respects robots.txt, applies scope rules, and fans out across a worker pool.
+              Every scanned page is checkpointed, so runs resume instead of re-fetching.
+            </p>
+            <span class="step-tag">robots.txt · sitemaps · checkpoints</span>
+          </article>
+
+          <article class="step reveal">
+            <span class="step-num">02</span>
+            <h3>Render</h3>
+            <p>
+              Fetch over plain HTTP, or execute the page in a real Playwright browser. Auto mode upgrades SPA-like
+              pages only where JavaScript is required.
+            </p>
+            <span class="step-tag">HTTP · Chromium · auto</span>
+          </article>
+
+          <article class="step reveal">
+            <span class="step-num">03</span>
+            <h3>Validate</h3>
+            <p>
+              Declarative tag policies, multi-step journeys, privacy rules, and out-of-process Node validators.
+              Policies live in YAML or JSON and evaluate against captured evidence.
+            </p>
+            <span class="step-tag">YAML · JSON · TypeScript</span>
+          </article>
+
+          <article class="step reveal">
+            <span class="step-num">04</span>
+            <h3>Prove</h3>
+            <p>
+              Pass/fail reports per rule and per page. Screenshots on journey failure, hashed cookie values, live
+              progress over SSE or WebSocket, and JSON, CSV, or print-ready HTML exports.
+            </p>
+            <span class="step-tag">JSON · CSV · HTML</span>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="section section-border" id="capabilities">
+      <div class="wrap">
+        <div class="section-head reveal">
+          <p class="eyebrow">Capabilities</p>
+          <h2>One audit engine for the whole tag lifecycle.</h2>
+          <p>
+            Scanning, tag governance, journey testing, and privacy compliance share the same evidence model — no
+            stitching together four tools and hoping the numbers agree.
+          </p>
+        </div>
+
+        <div class="cap-grid">
+          <article class="cap reveal">
+            <div class="cap-head">
+              <div class="icon-sm">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="1.8"></circle><path d="M12 7v5l3 2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path></svg>
+              </div>
+              <h3>Page scanning</h3>
+            </div>
+            <p>
+              BFS crawling with robots.txt handling, sitemap discovery, SPA detection, and a starter tag detector.
+              HTTP and headless-browser fetchers behind one interface.
+            </p>
+          </article>
+
+          <article class="cap reveal">
+            <div class="cap-head">
+              <div class="icon-sm">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path></svg>
+              </div>
+              <h3>Tag policies</h3>
+            </div>
+            <p>
+              Assert tags, requests, data-layer events, and cookie inventories must exist or must not exist. Add
+              value rules, attribute checks, and consent requirements.
+            </p>
+          </article>
+
+          <article class="cap reveal">
+            <div class="cap-head">
+              <div class="icon-sm">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h14v16H5zM8 8h8M8 12h5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path><path d="m14 16 2 2 3-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+              </div>
+              <h3>Journey testing</h3>
+            </div>
+            <p>
+              Script navigate, click, fill, and wait steps in one browser session. Validate URL, title, tags, events,
+              and cookies after every step, with a failure screenshot.
+            </p>
+          </article>
+
+          <article class="cap reveal">
+            <div class="cap-head">
+              <div class="icon-sm">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 4 6v5c0 5 3.4 8.6 8 10 4.6-1.4 8-5 8-10V6l-8-3Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"></path><path d="m9 12 2 2 4-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+              </div>
+              <h3>Privacy compliance</h3>
+            </div>
+            <p>
+              Score GDPR, CCPA, LGPD, and ePrivacy against consent-state simulations. Flag pre-consent leaks, missing
+              rights flows, DPIA triggers, and cross-border hosts.
+            </p>
+          </article>
+
+          <article class="cap reveal">
+            <div class="cap-head">
+              <div class="icon-sm">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m8 8-4 4 4 4M16 8l4 4-4 4M14 4l-4 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+              </div>
+              <h3>Plugin SDK</h3>
+            </div>
+            <p>
+              Write validators in TypeScript against a stable JSON protocol. Plugins run out of process, so a bad
+              validator is isolated and never aborts a scan.
+            </p>
+          </article>
+
+          <article class="cap reveal">
+            <div class="cap-head">
+              <div class="icon-sm">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 17V7m5 10V4m5 13v-6m5 6V9" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path></svg>
+              </div>
+              <h3>Streaming API</h3>
+            </div>
+            <p>
+              REST endpoints plus SSE and WebSocket progress streams. PostgreSQL persistence, in-memory mode for
+              tests, Docker Compose, and a Helm chart for clusters.
+            </p>
+          </article>
+        </div>
+
+        <div class="also reveal">
+          <span>Also in the box</span>
+          <b>HAR capture</b>
+          <b>Data-layer capture</b>
+          <b>Regional egress proxies</b>
+          <b>Run resume</b>
+          <b>Helm chart</b>
+          <b>Alerting · roadmap</b>
+        </div>
+      </div>
+    </section>
+
+    <section class="section section-border" id="evidence">
+      <div class="wrap split">
+        <div class="reveal">
+          <p class="eyebrow">Evidence over assertions</p>
+          <h2>Findings you can hand to legal, martech, or engineering.</h2>
+          <p class="split-lead">
+            Pageguard doesn’t just say a page failed. It keeps the observation that produced the finding — the tag,
+            request, cookie, or event — and makes the whole run reproducible.
+          </p>
+          <ul class="checklist">
+            <li>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 13 4 4L19 7" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+              <span><b>Every finding is traceable</b> to the exact observation that produced it.</span>
+            </li>
+            <li>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 13 4 4L19 7" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+              <span><b>Cookie values are hashed</b> at the edge and never persisted in plaintext.</span>
+            </li>
+            <li>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 13 4 4L19 7" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+              <span><b>Runs are resumable</b> from page checkpoints, with no duplicate pages or findings.</span>
+            </li>
+            <li>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 13 4 4L19 7" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+              <span><b>Reports export</b> as JSON, CSV, or print-ready HTML — no proprietary format.</span>
+            </li>
+          </ul>
+          <a class="text-link" href="https://github.com/bhkbdbhatt/openobserve/blob/main/docs/architecture.md" target="_blank" rel="noreferrer">
+            Read the architecture
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+          </a>
+        </div>
+
+        <div class="reveal">
+          <div class="code-card" data-tabs>
+            <div class="code-head">
+              <div class="tabs" role="tablist" aria-label="Configuration and report examples">
+                <button class="tab" type="button" role="tab" id="tab-policy" aria-controls="panel-policy" aria-selected="true">Tag policy</button>
+                <button class="tab" type="button" role="tab" id="tab-privacy" aria-controls="panel-privacy" aria-selected="false" tabindex="-1">Privacy</button>
+                <button class="tab" type="button" role="tab" id="tab-report" aria-controls="panel-report" aria-selected="false" tabindex="-1">Report</button>
+              </div>
+              <button class="copy" type="button" data-copy="#panel-policy" aria-label="Copy example">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 9h10v10H9zM5 15V5h10" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+                <span>Copy</span>
+              </button>
+            </div>
+            <div class="code-body">
+              <pre class="tabpanel is-active" id="panel-policy" role="tabpanel" aria-labelledby="tab-policy"><code><span class="tok-c"># one policy across tags, cookies, and events</span>
+<span class="tok-k">version</span>: <span class="tok-n">1</span>
+<span class="tok-k">name</span>: <span class="tok-s">"Acme tag policy"</span>
+
+<span class="tok-k">must_exist</span>:
+  - <span class="tok-k">id</span>: <span class="tok-s">gtm</span>
+    <span class="tok-k">target</span>: <span class="tok-s">tag</span>
+    <span class="tok-k">match</span>:
+      <span class="tok-k">tag</span>: <span class="tok-s">google-tag-manager</span>
+
+  - <span class="tok-k">id</span>: <span class="tok-s">purchase-event</span>
+    <span class="tok-k">target</span>: <span class="tok-s">event</span>
+    <span class="tok-k">match</span>:
+      <span class="tok-k">event</span>: <span class="tok-s">purchase</span>
+
+<span class="tok-k">value_rules</span>:
+  - <span class="tok-k">id</span>: <span class="tok-s">currency-code</span>
+    <span class="tok-k">variable</span>: <span class="tok-s">cart.currency</span>
+    <span class="tok-k">pattern</span>: <span class="tok-s">"^[A-Z]{3}$"</span>
+
+<span class="tok-k">consent_requirements</span>:
+  <span class="tok-k">gated_categories</span>: [<span class="tok-s">advertising</span>, <span class="tok-s">social</span>]
+</code></pre>
+
+              <pre class="tabpanel" id="panel-privacy" role="tabpanel" aria-labelledby="tab-privacy" hidden><code><span class="tok-c"># consent-state simulation across regulations</span>
+<span class="tok-k">version</span>: <span class="tok-n">1</span>
+<span class="tok-k">name</span>: <span class="tok-s">"Acme privacy policy"</span>
+
+<span class="tok-k">regulations</span>:
+  - <span class="tok-s">gdpr</span>
+  - <span class="tok-s">ccpa</span>
+  - <span class="tok-s">eprivacy</span>
+
+<span class="tok-k">cookie_rules</span>:
+  - <span class="tok-k">name_pattern</span>: <span class="tok-s">"^_ga"</span>
+    <span class="tok-k">category</span>: <span class="tok-s">analytics</span>
+  - <span class="tok-k">name_pattern</span>: <span class="tok-s">"^_fbp"</span>
+    <span class="tok-k">category</span>: <span class="tok-s">advertising</span>
+
+<span class="tok-k">settings</span>:
+  <span class="tok-k">consent_states</span>: [<span class="tok-s">accept_all</span>, <span class="tok-s">reject_all</span>, <span class="tok-s">necessary_only</span>, <span class="tok-s">gpc</span>]
+  <span class="tok-k">gated_categories</span>: [<span class="tok-s">advertising</span>, <span class="tok-s">social</span>]
+  <span class="tok-k">cmp_tags</span>: [<span class="tok-s">onetrust</span>, <span class="tok-s">cookiebot</span>]
+  <span class="tok-k">pass_threshold</span>: <span class="tok-n">100</span>
+</code></pre>
+
+              <pre class="tabpanel" id="panel-report" role="tabpanel" aria-labelledby="tab-report" hidden><code>{
+  <span class="tok-k">"runId"</span>: <span class="tok-s">"run_7f3c…"</span>,
+  <span class="tok-k">"target"</span>: <span class="tok-s">"https://acme.com"</span>,
+  <span class="tok-k">"pages"</span>: <span class="tok-n">142</span>,
+  <span class="tok-k">"healthScore"</span>: <span class="tok-n">98.2</span>,
+  <span class="tok-k">"findings"</span>: [
+    {
+      <span class="tok-k">"ruleId"</span>: <span class="tok-s">"consent-analytics"</span>,
+      <span class="tok-k">"severity"</span>: <span class="tok-s">"critical"</span>,
+      <span class="tok-k">"pageUrl"</span>: <span class="tok-s">"/checkout"</span>,
+      <span class="tok-k">"observed"</span>: <span class="tok-s">"_ga fired before consent"</span>,
+      <span class="tok-k">"evidence"</span>: <span class="tok-s">"network/request/9f2a"</span>
+    }
+  ],
+  <span class="tok-k">"privacy"</span>: {
+    <span class="tok-k">"gdpr"</span>: <span class="tok-n">100</span>,
+    <span class="tok-k">"ccpa"</span>: <span class="tok-n">96</span>,
+    <span class="tok-k">"eprivacy"</span>: <span class="tok-n">94</span>
+  }
+}
+</code></pre>
+            </div>
+          </div>
+          <p class="caption">Illustrative shape of Pageguard policies and reports.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section section-border" id="quickstart">
+      <div class="wrap">
+        <div class="quick">
+          <div class="reveal">
+            <p class="eyebrow">Self-hosted by default</p>
+            <h2>Run it on your own infrastructure.</h2>
+            <p class="split-lead">
+              One Go binary, Playwright for rendering, and optional PostgreSQL. No SaaS account, no per-page pricing,
+              and no audit data leaving your network unless you send it.
+            </p>
+            <ul class="requirements">
+              <li>
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 13 4 4L19 7" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+                Go 1.25+ for the API and orchestrator
+              </li>
+              <li>
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 13 4 4L19 7" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+                Node + Playwright for browser rendering
+              </li>
+              <li>
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 13 4 4L19 7" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+                PostgreSQL optional — in-memory works for evaluation
+              </li>
+              <li>
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 13 4 4L19 7" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+                Docker Compose or Helm for production
+              </li>
+            </ul>
+            <div class="badge-row">
+              <span class="badge">MIT license</span>
+              <span class="badge">No vendor lock-in</span>
+              <span class="badge">Audit the source</span>
+            </div>
+          </div>
+
+          <div class="quick-code reveal">
+            <div class="code-card">
+              <div class="code-head">
+                <span class="file">Quick start</span>
+                <button class="copy" type="button" data-copy="#code-quickstart" aria-label="Copy quick start commands">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 9h10v10H9zM5 15V5h10" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+                  <span>Copy</span>
+                </button>
+              </div>
+              <pre class="terminal" id="code-quickstart"><code><span class="tok-c">$</span> git clone https://github.com/bhkbdbhatt/openobserve.git
+<span class="tok-c">$</span> cd openobserve
+<span class="tok-c">$</span> go run ./cmd/pageguard --addr :8080 --plugins ./plugins
+
+<span class="tok-t">→  API ready</span> <span class="tok-c">http://localhost:8080</span>
+</code></pre>
+            </div>
+
+            <div class="code-card">
+              <div class="code-head">
+                <span class="file">Docker Compose</span>
+                <button class="copy" type="button" data-copy="#code-docker" aria-label="Copy Docker Compose command">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 9h10v10H9zM5 15V5h10" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+                  <span>Copy</span>
+                </button>
+              </div>
+              <pre class="terminal" id="code-docker"><code><span class="tok-c">$</span> docker compose -f deploy/docker-compose.yml up --build
+
+<span class="tok-t">API</span>       http://localhost:8080
+<span class="tok-t">dashboard</span> http://localhost:3000
+<span class="tok-t">postgres</span>  localhost:5432
+</code></pre>
+            </div>
+          </div>
+        </div>
+
+        <div class="stats reveal">
+          <div class="stat">
+            <strong>4</strong>
+            <span>privacy regulations evaluated out of the box</span>
+          </div>
+          <div class="stat">
+            <strong>3</strong>
+            <span>render modes: HTTP, browser, and auto</span>
+          </div>
+          <div class="stat">
+            <strong>100%</strong>
+            <span>self-hosted, with no per-page pricing</span>
+          </div>
+          <div class="stat">
+            <strong>MIT</strong>
+            <span>licensed — inspect it, fork it, ship it</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section section-border" id="faq">
+      <div class="wrap">
+        <div class="section-head reveal">
+          <p class="eyebrow">FAQ</p>
+          <h2>Questions worth asking.</h2>
+          <p>Straight answers about licensing, privacy, and what Pageguard does — and doesn’t — replace.</p>
+        </div>
+
+        <div class="faq">
+          <details class="reveal">
+            <summary>Is Pageguard really open source?</summary>
+            <p>
+              Yes. Pageguard is MIT licensed and built to be self-hosted. You can inspect the scanning engine, extend
+              it with the TypeScript plugin SDK, and run it entirely inside your own network. It was formerly scoped
+              as “OpenObserve” and renamed to avoid confusion with the observability project.
+            </p>
+          </details>
+
+          <details class="reveal">
+            <summary>Does it replace my consent management platform?</summary>
+            <p>
+              No. Pageguard audits what your CMP and tags actually do. It simulates consent states such as accept-all,
+              reject-all, necessary-only, and GPC, then reports trackers and cookies that fire outside the policy you
+              defined. It does not collect consent or replace the banner.
+            </p>
+          </details>
+
+          <details class="reveal">
+            <summary>Do you store raw cookie values?</summary>
+            <p>
+              No. Raw cookie values are hashed at the edge and never persisted. Reports keep cookie metadata, domains,
+              attributes, categories, and hashes — enough to prove behavior without retaining sensitive values.
+            </p>
+          </details>
+
+          <details class="reveal">
+            <summary>Can it audit single-page apps?</summary>
+            <p>
+              Yes. Browser render mode executes client-side JavaScript in Playwright and captures the resulting tags,
+              requests, cookies, console output, and data layer. Auto mode only upgrades SPA-like pages, so simple
+              pages stay fast.
+            </p>
+          </details>
+
+          <details class="reveal">
+            <summary>How do journeys differ from a scan?</summary>
+            <p>
+              A scan audits pages at rest. A journey runs a scripted flow — navigate, click, fill, wait — in a single
+              browser session and validates expectations after each step. That catches checkout, signup, and other
+              multi-step paths where tags fire in sequence.
+            </p>
+          </details>
+
+          <details class="reveal">
+            <summary>What does it cost?</summary>
+            <p>
+              The software is free under the MIT license. You pay only for the infrastructure you run it on. The
+              dashboard can be hosted statically, but the Go API needs a long-running server, PostgreSQL, and
+              Playwright — Render, Fly.io, Railway, or your own VPS all work.
+            </p>
+          </details>
+        </div>
+      </div>
+    </section>
+
+    <section class="cta">
+      <div class="wrap">
+        <div class="cta-panel reveal">
+          <p class="eyebrow">Take back the tag layer</p>
+          <h2>Stop trusting the tag layer. Audit it.</h2>
+          <p>
+            Crawl a site, write a policy, and get evidence you can act on — in an afternoon, on your own
+            infrastructure.
+          </p>
+          <div class="cta-actions">
+            <a class="btn btn-primary btn-lg" href="#quickstart">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 7 5 5-5 5M12 17h7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+              Start self-hosting
+            </a>
+            <a class="btn btn-ghost btn-lg" href="https://github.com/bhkbdbhatt/openobserve" target="_blank" rel="noreferrer">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 .7a11.3 11.3 0 0 0-3.6 22c.6.1.8-.2.8-.6v-2c-3.2.7-3.9-1.4-3.9-1.4-.5-1.3-1.2-1.7-1.2-1.7-1-.7.1-.7.1-.7 1.1.1 1.7 1.1 1.7 1.1 1 1.7 2.6 1.2 3.2.9.1-.7.4-1.2.7-1.5-2.6-.3-5.3-1.3-5.3-5.8 0-1.3.5-2.3 1.1-3.1-.1-.3-.5-1.5.1-3.1 0 0 1-.3 3.2 1.2a11 11 0 0 1 5.8 0C17 4.8 18 5.1 18 5.1c.6 1.6.2 2.8.1 3.1.7.8 1.1 1.8 1.1 3.1 0 4.5-2.7 5.5-5.3 5.8.4.4.8 1.1.8 2.2v3.2c0 .4.2.7.8.6A11.3 11.3 0 0 0 12 .7Z"></path></svg>
+              Explore the repository
+            </a>
+          </div>
+          <p class="cta-note">MIT licensed · Self-hosted · PostgreSQL ready</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap">
+      <div class="footer-grid">
+        <div class="footer-brand">
+          <a class="brand" href="#top" aria-label="Pageguard home">
+            <svg class="mark" viewBox="0 0 40 40" aria-hidden="true">
+              <defs>
+                <linearGradient id="markGradFooter" x1="0" y1="0" x2="40" y2="40" gradientUnits="userSpaceOnUse">
+                  <stop stop-color="#818cf8"></stop>
+                  <stop offset="1" stop-color="#10b981"></stop>
+                </linearGradient>
+              </defs>
+              <rect x="1" y="1" width="38" height="38" rx="11" fill="url(#markGradFooter)"></rect>
+              <path d="M20 8.5 28.5 12v7.3c0 5.9-3.7 10-8.5 12.2-4.8-2.2-8.5-6.3-8.5-12.2V12L20 8.5Z" fill="none" stroke="#fff" stroke-width="1.8" stroke-linejoin="round"></path>
+              <path d="m16 20 2.6 2.6L24.5 17" fill="none" stroke="#fff" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"></path>
+            </svg>
+            <span>Pageguard</span>
+          </a>
+          <p>Open-source web governance and martech auditing. Prove every tag, cookie, and beacon.</p>
+        </div>
+
+        <div class="footer-col">
+          <h4>Product</h4>
+          <ul>
+            <li><a href="#why">Why Pageguard</a></li>
+            <li><a href="#how">How it works</a></li>
+            <li><a href="#capabilities">Capabilities</a></li>
+            <li><a href="#quickstart">Self-host</a></li>
+            <li><a href="#faq">FAQ</a></li>
+          </ul>
+        </div>
+
+        <div class="footer-col">
+          <h4>Resources</h4>
+          <ul>
+            <li><a href="https://github.com/bhkbdbhatt/openobserve/blob/main/docs/architecture.md" target="_blank" rel="noreferrer">Architecture</a></li>
+            <li><a href="https://github.com/bhkbdbhatt/openobserve/blob/main/docs/tag-policy.md" target="_blank" rel="noreferrer">Tag policies</a></li>
+            <li><a href="https://github.com/bhkbdbhatt/openobserve/blob/main/docs/journey.md" target="_blank" rel="noreferrer">Journeys</a></li>
+            <li><a href="https://github.com/bhkbdbhatt/openobserve/blob/main/docs/privacy.md" target="_blank" rel="noreferrer">Privacy</a></li>
+            <li><a href="https://github.com/bhkbdbhatt/openobserve/blob/main/docs/plugin-abi.md" target="_blank" rel="noreferrer">Plugin ABI</a></li>
+          </ul>
+        </div>
+
+        <div class="footer-col">
+          <h4>Project</h4>
+          <ul>
+            <li><a href="https://github.com/bhkbdbhatt/openobserve" target="_blank" rel="noreferrer">GitHub</a></li>
+            <li><a href="https://github.com/bhkbdbhatt/openobserve/blob/main/README.md#license" target="_blank" rel="noreferrer">License</a></li>
+            <li><a href="https://github.com/bhkbdbhatt/openobserve/blob/main/SECURITY.md" target="_blank" rel="noreferrer">Security</a></li>
+            <li><a href="https://github.com/bhkbdbhatt/openobserve/blob/main/docs/netlify-deploy.md" target="_blank" rel="noreferrer">Deploy guide</a></li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="footer-bottom">
+        <span>© <span id="year">2026</span> Pageguard · MIT licensed</span>
+        <span>Formerly scoped as “OpenObserve” · Renamed to avoid collision</span>
+      </div>
+    </div>
+  </footer>
+</body>
+</html>
