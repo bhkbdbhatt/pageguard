@@ -491,3 +491,35 @@ export function Select({
     </label>
   );
 }
+
+export function PageHeader({
+  eyebrow,
+  title,
+  subtitle,
+  icon,
+  actions,
+}: {
+  eyebrow: string;
+  title: string;
+  subtitle: string;
+  icon?: Parameters<typeof Icon>[0]["name"];
+  actions?: ReactNode;
+}) {
+  return (
+    <div className="flex flex-wrap items-end justify-between gap-3">
+      <div className="min-w-0">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.25em] text-indigo-400">{eyebrow}</p>
+        <div className="mt-1 flex flex-wrap items-center gap-2">
+          {icon && (
+            <span className="flex h-7 w-7 items-center justify-center rounded-lg border border-slate-800 bg-slate-900 text-indigo-300">
+              <Icon name={icon} className="h-4 w-4" />
+            </span>
+          )}
+          <h1 className="text-xl font-bold text-white sm:text-2xl">{title}</h1>
+        </div>
+        <p className="mt-1 max-w-3xl text-xs leading-relaxed text-slate-500">{subtitle}</p>
+      </div>
+      {actions && <div className="flex flex-wrap gap-2">{actions}</div>}
+    </div>
+  );
+}

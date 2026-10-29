@@ -233,8 +233,25 @@ async function openSession(opts) {
   };
   if (opts.locale) contextOptions.locale = opts.locale;
   if (opts.timezone) contextOptions.timezoneId = opts.timezone;
+  if (opts.gpc) {
+    contextOptions.extraHTTPHeaders = {
+      ...(contextOptions.extraHTTPHeaders || {}),
+      "Sec-GPC": "1",
+      DNT: "1",
+    };
+  }
 
   const context = await b.newContext(contextOptions);
+  if (opts.gpc) {
+    await context.addInitScript(() => {
+      try {
+        Object.defineProperty(navigator, "globalPrivacyControl", { get: () => true });
+        Object.defineProperty(navigator, "doNotTrack", { get: () => "1" });
+      } catch {
+        /* best effort */
+      }
+    });
+  }
   const requests = [];
   const consoleMessages = [];
 
@@ -362,6 +379,31 @@ async function collectState(requested) {
   };
 }
 
+// consent clicks the first matching consent control, best-effort. It never
+// fails when no selector matches so a privacy evaluation can still observe the
+// page as rendered.
+async function consentSession(req) {
+  if (!session) throw new Error("no open session");
+  const { page } = session;
+  const timeout = req.timeoutMs || 1500;
+  let clicked = "";
+  for (const selector of req.selectors || []) {
+    if (!selector) continue;
+    try {
+      const el = await page.waitForSelector(selector, { timeout, state: "visible" });
+      if (!el) continue;
+      await el.click({ timeout });
+      clicked = selector;
+      break;
+    } catch {
+      /* try the next selector */
+    }
+  }
+  if (req.waitMs) await page.waitForTimeout(req.waitMs);
+  const state = await collectState(page.url());
+  return { clicked, state };
+}
+
 async function screenshotSession() {
   if (!session) throw new Error("no open session");
   const buf = await session.page.screenshot({ type: "png" });
@@ -384,6 +426,11 @@ async function handleCommand(req) {
     case "step": {
       const state = await performStep(req.step || {});
       write({ ok: true, state });
+      return true;
+    }
+    case "consent": {
+      const result = await consentSession(req);
+      write({ ok: true, state: result.state, clicked: result.clicked });
       return true;
     }
     case "screenshot": {

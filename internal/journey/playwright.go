@@ -58,13 +58,14 @@ func (f *PlaywrightSessionFactory) Open(ctx context.Context, opts SessionOptions
 
 	s := &playwrightSession{cmd: cmd, stdin: stdin, stdout: sc}
 	if err := s.call(ctx, workerRequest{Cmd: "open", Opts: &workerSessionOpts{
-		UserAgent:         opts.UserAgent,
-		Width:             opts.Viewport.Width,
-		Height:            opts.Viewport.Height,
-		Locale:            opts.Locale,
-		Timezone:          opts.Timezone,
-		IgnoreHTTPSErrors: opts.IgnoreHTTPSErrors,
-		CaptureDataLayer:  opts.captureDataLayer(),
+		UserAgent:            opts.UserAgent,
+		Width:                opts.Viewport.Width,
+		Height:               opts.Viewport.Height,
+		Locale:               opts.Locale,
+		Timezone:             opts.Timezone,
+		IgnoreHTTPSErrors:    opts.IgnoreHTTPSErrors,
+		CaptureDataLayer:     opts.captureDataLayer(),
+		GlobalPrivacyControl: opts.GlobalPrivacyControl,
 	}}); err != nil {
 		_ = s.Close()
 		return nil, err
@@ -81,19 +82,50 @@ type playwrightSession struct {
 }
 
 type workerRequest struct {
-	Cmd  string             `json:"cmd"`
-	Opts *workerSessionOpts `json:"opts,omitempty"`
-	Step *workerStep        `json:"step,omitempty"`
+	Cmd       string             `json:"cmd"`
+	Opts      *workerSessionOpts `json:"opts,omitempty"`
+	Step      *workerStep        `json:"step,omitempty"`
+	Selectors []string           `json:"selectors,omitempty"`
+	TimeoutMs int                `json:"timeoutMs,omitempty"`
+	WaitMs    int                `json:"waitMs,omitempty"`
+}
+
+// ConsentClicker is implemented by sessions that can best-effort click one of
+// several consent controls (accept, reject, preferences) in the live page.
+type ConsentClicker interface {
+	Consent(ctx context.Context, selectors []string, timeoutMs, waitMs int) (*PageState, string, error)
+}
+
+// Consent tries each selector in order and clicks the first visible match.
+// When none match it returns the current state with an empty clicked selector.
+func (s *playwrightSession) Consent(ctx context.Context, selectors []string, timeoutMs, waitMs int) (*PageState, string, error) {
+	resp, err := s.roundTrip(ctx, workerRequest{
+		Cmd: "consent", Selectors: selectors, TimeoutMs: timeoutMs, WaitMs: waitMs,
+	})
+	if err != nil {
+		return nil, "", err
+	}
+	st := &PageState{}
+	if resp.State != nil {
+		st = &PageState{
+			URL: resp.State.URL, FinalURL: resp.State.FinalURL, Status: resp.State.Status,
+			Title: resp.State.Title, HTML: resp.State.HTML, Requests: resp.State.Requests,
+			Cookies: resp.State.Cookies, Console: resp.State.Console,
+			DataLayer: resp.State.DataLayer, DurationMs: resp.State.Duration,
+		}
+	}
+	return st, resp.Clicked, nil
 }
 
 type workerSessionOpts struct {
-	UserAgent         string `json:"userAgent,omitempty"`
-	Width             int    `json:"width,omitempty"`
-	Height            int    `json:"height,omitempty"`
-	Locale            string `json:"locale,omitempty"`
-	Timezone          string `json:"timezone,omitempty"`
-	IgnoreHTTPSErrors bool   `json:"ignoreHTTPSErrors,omitempty"`
-	CaptureDataLayer  bool   `json:"captureDataLayer,omitempty"`
+	UserAgent            string `json:"userAgent,omitempty"`
+	Width                int    `json:"width,omitempty"`
+	Height               int    `json:"height,omitempty"`
+	Locale               string `json:"locale,omitempty"`
+	Timezone             string `json:"timezone,omitempty"`
+	IgnoreHTTPSErrors    bool   `json:"ignoreHTTPSErrors,omitempty"`
+	CaptureDataLayer     bool   `json:"captureDataLayer,omitempty"`
+	GlobalPrivacyControl bool   `json:"gpc,omitempty"`
 }
 
 type workerStep struct {
@@ -105,10 +137,11 @@ type workerStep struct {
 }
 
 type workerResponse struct {
-	OK    bool         `json:"ok"`
-	Error string       `json:"error,omitempty"`
-	State *workerState `json:"state,omitempty"`
-	Data  string       `json:"data,omitempty"`
+	OK      bool         `json:"ok"`
+	Error   string       `json:"error,omitempty"`
+	State   *workerState `json:"state,omitempty"`
+	Data    string       `json:"data,omitempty"`
+	Clicked string       `json:"clicked,omitempty"`
 }
 
 type workerState struct {
@@ -227,5 +260,8 @@ func (s *playwrightSession) roundTrip(ctx context.Context, req workerRequest) (*
 	}
 }
 
-// compile-time interface check.
-var _ SessionFactory = (*PlaywrightSessionFactory)(nil)
+// compile-time interface checks.
+var (
+	_ SessionFactory = (*PlaywrightSessionFactory)(nil)
+	_ ConsentClicker = (*playwrightSession)(nil)
+)

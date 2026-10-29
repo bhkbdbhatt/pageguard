@@ -21,19 +21,41 @@ type Service struct {
 	manager *orchestrator.Manager
 	gov     *governance.Service
 
+	browserCmd []string
+
 	mu       sync.Mutex
 	inflight map[domain.ID]context.CancelFunc
+
+	batchMu         sync.Mutex
+	batchInflight   map[domain.ID]bool
+	journeyInflight map[domain.ID]bool
+	profileSeedMu   sync.Mutex
+}
+
+// Option customises a Service.
+type Option func(*Service)
+
+// WithBrowserCommand configures the browser worker command used by journeys
+// and privacy evaluations.
+func WithBrowserCommand(cmd []string) Option {
+	return func(s *Service) { s.browserCmd = append([]string(nil), cmd...) }
 }
 
 // New constructs a Service.
-func New(store domain.Store, hub *events.Hub, manager *orchestrator.Manager) *Service {
-	return &Service{
-		store:    store,
-		hub:      hub,
-		manager:  manager,
-		gov:      governance.New(store),
-		inflight: map[domain.ID]context.CancelFunc{},
+func New(store domain.Store, hub *events.Hub, manager *orchestrator.Manager, opts ...Option) *Service {
+	s := &Service{
+		store:           store,
+		hub:             hub,
+		manager:         manager,
+		gov:             governance.New(store),
+		inflight:        map[domain.ID]context.CancelFunc{},
+		batchInflight:   map[domain.ID]bool{},
+		journeyInflight: map[domain.ID]bool{},
 	}
+	for _, opt := range opts {
+		opt(s)
+	}
+	return s
 }
 
 // Store exposes the underlying store (used by read-only handlers).
@@ -108,6 +130,7 @@ func (s *Service) StartRun(ctx context.Context, scanID domain.ID) (*domain.Run, 
 			s.mu.Unlock()
 		}()
 		_ = s.manager.Execute(rctx, scan, &execRun)
+		s.EvaluateAlerts(context.Background(), run.ID)
 	}()
 
 	return run, nil
@@ -171,6 +194,7 @@ func (s *Service) ResumeRun(ctx context.Context, runID domain.ID) (*domain.Run, 
 			s.mu.Unlock()
 		}()
 		_ = s.manager.Execute(rctx, scan, &execRun)
+		s.EvaluateAlerts(context.Background(), run.ID)
 	}()
 
 	return run, nil

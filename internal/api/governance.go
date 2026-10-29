@@ -219,7 +219,7 @@ func (s *Server) handleDeleteRule(w http.ResponseWriter, r *http.Request) {
 }
 
 func writeServiceError(w http.ResponseWriter, err error) {
-	if errors.Is(err, domain.ErrNotFound) {
+	if errors.Is(err, domain.ErrNotFound) || errors.Is(err, domain.ErrConflict) {
 		writeStoreError(w, err)
 		return
 	}

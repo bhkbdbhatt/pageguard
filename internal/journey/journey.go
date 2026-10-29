@@ -60,6 +60,10 @@ type SessionOptions struct {
 	// CaptureDataLayer records window.dataLayer payloads after each step. It
 	// defaults to true (journeys commonly assert on data-layer events).
 	CaptureDataLayer *bool `json:"capture_data_layer,omitempty" yaml:"capture_data_layer,omitempty"`
+	// GlobalPrivacyControl emits a Sec-GPC header and sets
+	// navigator.globalPrivacyControl in every page. Used by the privacy module
+	// to simulate a GPC opt-out.
+	GlobalPrivacyControl bool `json:"global_privacy_control,omitempty" yaml:"global_privacy_control,omitempty"`
 }
 
 // Step actions.

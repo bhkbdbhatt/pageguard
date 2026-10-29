@@ -59,11 +59,11 @@ func main() {
 	}
 
 	fetcher := scanner.NewHTTPFetcher()
+	browserParts := strings.Fields(*browserCmd)
 	var renderer scanner.Renderer
-	if strings.TrimSpace(*browserCmd) != "" {
-		parts := strings.Fields(*browserCmd)
-		renderer = scanner.NewBrowserRenderer(parts...)
-		logger.Info("browser renderer enabled", "command", parts)
+	if len(browserParts) > 0 {
+		renderer = scanner.NewBrowserRenderer(browserParts...)
+		logger.Info("browser renderer enabled", "command", browserParts)
 	}
 
 	var mgrOpts []orchestrator.Option
@@ -80,7 +80,8 @@ func main() {
 	scn := scanner.New(fetcher, renderer)
 	host := plugin.NewHost(registry)
 	manager := orchestrator.NewManager(store, hub, scn, host, mgrOpts...)
-	svc := service.New(store, hub, manager)
+	svc := service.New(store, hub, manager, service.WithBrowserCommand(browserParts))
+	go svc.StartBackground(ctx, 30*time.Second)
 
 	server := &http.Server{
 		Addr:              *addr,

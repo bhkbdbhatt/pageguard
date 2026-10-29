@@ -10,7 +10,6 @@ import {
   listProjects,
   type Project,
 } from "../lib/api";
-import { DemoBadge } from "./demo";
 import { Icon, type IconName } from "./icons";
 import { Modal } from "./ui";
 
@@ -39,7 +38,6 @@ type NavItem = {
   short: string;
   icon: IconName;
   group: "governance" | "preview";
-  demo?: boolean;
 };
 
 const NAV: NavItem[] = [
@@ -48,12 +46,12 @@ const NAV: NavItem[] = [
   { href: "/inspector", label: "Beacon & DataLayer", short: "Inspector", icon: "code", group: "governance" },
   { href: "/rules", label: "Rules Configurator", short: "Rules", icon: "shield", group: "governance" },
   { href: "/consent", label: "Consent & CMP Matrix", short: "Consent", icon: "cookie", group: "governance" },
-  { href: "/inventory", label: "Tag & Cookie Inventory", short: "Inventory", icon: "database", group: "preview", demo: true },
-  { href: "/schedules", label: "Scheduled Audits", short: "Schedules", icon: "calendar", group: "preview", demo: true },
-  { href: "/alerts", label: "Alerts & Notifications", short: "Alerts", icon: "bell", group: "preview", demo: true },
-  { href: "/journeys", label: "Journey Test Runner", short: "Journeys", icon: "route", group: "preview", demo: true },
-  { href: "/privacy", label: "Privacy Jurisdictions", short: "Privacy", icon: "scale", group: "preview", demo: true },
-  { href: "/reports", label: "Reports & Exports", short: "Reports", icon: "folder", group: "preview", demo: true },
+  { href: "/inventory", label: "Tag & Cookie Inventory", short: "Inventory", icon: "database", group: "preview" },
+  { href: "/schedules", label: "Scheduled Audits", short: "Schedules", icon: "calendar", group: "preview" },
+  { href: "/alerts", label: "Alerts & Notifications", short: "Alerts", icon: "bell", group: "preview" },
+  { href: "/journeys", label: "Journey Test Runner", short: "Journeys", icon: "route", group: "preview" },
+  { href: "/privacy", label: "Privacy Jurisdictions", short: "Privacy", icon: "scale", group: "preview" },
+  { href: "/reports", label: "Reports & Exports", short: "Reports", icon: "folder", group: "preview" },
 ];
 
 const GOVERNANCE_NAV = NAV.filter((item) => item.group === "governance");
@@ -123,9 +121,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     () => ({ project, projects, loadingProjects, setProject, refreshProjects, openAudit }),
     [project, projects, loadingProjects, setProject, refreshProjects, openAudit],
   );
-
-  const demoRoute = PREVIEW_NAV.some((item) => navActive(pathname, item.href));
-
   const renderNavLink = (item: NavItem) => {
     const active = navActive(pathname, item.href);
     return (
@@ -140,7 +135,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       >
         <Icon name={item.icon} className="h-4 w-4 shrink-0" />
         <span className="flex-1 truncate">{item.label}</span>
-        {item.demo && <DemoBadge />}
       </Link>
     );
   };
@@ -187,7 +181,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                 <div>
                   <div className="flex items-center gap-2">
                     <h1 className="text-sm font-bold text-white">Tag Governance Console</h1>
-                    {demoRoute && <DemoBadge />}
                   </div>
                   <p className="hidden text-[11px] text-slate-500 sm:block">
                     Beacon validation, data layer inspection and consent enforcement
@@ -240,7 +233,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                   >
                     <Icon name={item.icon} className="h-3.5 w-3.5" />
                     {item.short}
-                    {item.demo && <span className="h-1 w-1 rounded-full bg-amber-400" aria-label="Demo" />}
                   </Link>
                 );
               })}
