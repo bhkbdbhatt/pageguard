@@ -25,4 +25,4 @@ services:
           name: pageguard-db
           property: connectionString
       - key: PAGEGUARD_CORS_ORIGINS
-        sync: false
+        value: https://pageguardone.netlify.app
