@@ -35,7 +35,7 @@ func main() {
 	migrate := flag.Bool("migrate", env("PAGEGUARD_MIGRATE", "true") == "true", "apply migrations on startup")
 	proxies := flag.String("proxies", env("PAGEGUARD_PROXIES", ""), "comma-separated proxy specs, e.g. us=http://u:p@h:1,eu=http://h:2")
 	captureHAR := flag.Bool("capture-har", env("PAGEGUARD_CAPTURE_HAR", "false") == "true", "capture a HAR archive for browser-rendered pages")
-	captureDataLayer := flag.Bool("capture-datalayer", env("PAGEGUARD_CAPTURE_DATALAYER", "false") == "true", "capture client-side data layer payloads")
+	captureDataLayer := flag.Bool("capture-datalayer", env("PAGEGUARD_CAPTURE_DATALAYER", "true") == "true", "capture client-side data layer payloads (default true)")
 	flag.Parse()
 
 	logger := newLogger(*logLevel)

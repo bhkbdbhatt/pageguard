@@ -19,12 +19,14 @@ import {
   listPages,
   type AuditRow,
   type BeaconReport,
+  type DataLayerEntry,
   type Page,
   type ScanResult,
 } from "../../lib/api";
 import { bytes, duration, formatNumber, shortId, timeAgo } from "../../lib/format";
 
 type Tab = "beacons" | "datalayer" | "cookies" | "console" | "raw";
+type DataLayerView = "pushes" | "attributes";
 
 const TABS: { id: Tab; label: string; icon: "activity" | "code" | "cookie" | "terminal" | "file" }[] = [
   { id: "beacons", label: "Beacon stream", icon: "activity" },
@@ -44,6 +46,85 @@ function pretty(value: unknown) {
   }
 }
 
+// The worker serialises entry values to a JSON string (the schema stores the
+// raw JSON of the variable as a string), so strings that look like JSON are
+// decoded for display.
+function decodeEntryValue(value: unknown) {
+  if (typeof value === "string" && (value.startsWith("{") || value.startsWith("["))) {
+    try {
+      return JSON.parse(value);
+    } catch {
+      /* keep raw text */
+    }
+  }
+  return value;
+}
+
+// layerBase reduces "dataLayer[3]" / "adobeDataLayer.getState" to the variable
+// the entry belongs to, so entries can be grouped and filtered per system.
+function layerBase(name: string) {
+  return name.split("[")[0].split(".")[0];
+}
+
+function layerLabel(base: string) {
+  switch (base) {
+    case "dataLayer":
+      return "GTM / Adobe Launch";
+    case "adobeDataLayer":
+      return "Adobe Launch (ACDL)";
+    case "digitalData":
+      return "Adobe DTM";
+    case "utag_data":
+      return "Tealium";
+    case "_paq":
+      return "Matomo";
+    case "_satellite":
+      return "Adobe Launch";
+    default:
+      return base || "custom layer";
+  }
+}
+
+type AttributeRow = { layer: string; label: string; path: string; value: unknown };
+
+// layerState merges the successive pushes of one layer into the data layer's
+// final variable state (later pushes win), matching how tag managers resolve
+// data layer variables at call time. The Adobe Client Data Layer's
+// adobeDataLayer.getState() snapshot is an entry of its layer and merges in.
+function layerState(entries: DataLayerEntry[]): Record<string, unknown> | null {
+  let state: Record<string, unknown> | null = null;
+  for (const entry of entries) {
+    const decoded = decodeEntryValue(entry.value);
+    if (decoded && typeof decoded === "object" && !Array.isArray(decoded)) {
+      state = { ...(state ?? {}), ...(decoded as Record<string, unknown>) };
+    }
+  }
+  return state;
+}
+
+// flattenValue turns nested state into dotted-path attribute rows, matching the
+// variable naming used by tag managers (e.g. page.pageInfo.pageName).
+function flattenValue(path: string, value: unknown, out: { path: string; value: unknown }[]) {
+  if (Array.isArray(value)) {
+    if (value.length === 0) {
+      out.push({ path, value });
+      return;
+    }
+    value.forEach((v, i) => flattenValue(`${path}[${i}]`, v, out));
+    return;
+  }
+  if (value && typeof value === "object") {
+    const fields = Object.entries(value);
+    if (fields.length === 0) {
+      out.push({ path, value });
+      return;
+    }
+    for (const [k, v] of fields) flattenValue(path ? `${path}.${k}` : k, v, out);
+    return;
+  }
+  out.push({ path, value });
+}
+
 function InspectorInner() {
   const { project, loadingProjects } = useApp();
   const router = useRouter();
@@ -60,6 +141,8 @@ function InspectorInner() {
   const [tab, setTab] = useState<Tab>("beacons");
   const [query, setQuery] = useState("");
   const [vendor, setVendor] = useState("all");
+  const [layer, setLayer] = useState("all");
+  const [dlView, setDlView] = useState<DataLayerView>("pushes");
   const [expanded, setExpanded] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadingDetail, setLoadingDetail] = useState(false);
@@ -134,6 +217,7 @@ function InspectorInner() {
     (url: string) => {
       setPageUrl(url);
       setExpanded(null);
+      setLayer("all");
       if (runId) router.replace(`/inspector?run=${runId}&url=${encodeURIComponent(url)}`);
     },
     [router, runId],
@@ -151,13 +235,44 @@ function InspectorInner() {
     });
   }, [beacons, query, vendor]);
 
+  const dataLayers = useMemo(
+    () => Array.from(new Set((result?.dataLayer ?? []).map((entry) => layerBase(entry.name)))).sort(),
+    [result],
+  );
+
   const filteredDataLayer = useMemo(() => {
     const q = query.trim().toLowerCase();
     return (result?.dataLayer ?? []).filter((entry) => {
+      if (layer !== "all" && layerBase(entry.name) !== layer) return false;
       if (!q) return true;
-      return entry.name.toLowerCase().includes(q) || pretty(entry.value).toLowerCase().includes(q);
+      return entry.name.toLowerCase().includes(q) || pretty(decodeEntryValue(entry.value)).toLowerCase().includes(q);
     });
-  }, [result, query]);
+  }, [result, query, layer]);
+
+  // Final-state view: each capture layer's pushes are merged and flattened into
+  // `path: value` attribute rows, like a Tag Manager debugger would show.
+  const dataLayerAttributes = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    const byLayer = new Map<string, DataLayerEntry[]>();
+    for (const entry of result?.dataLayer ?? []) {
+      const base = layerBase(entry.name);
+      if (layer !== "all" && base !== layer) continue;
+      const present = byLayer.get(base) ?? [];
+      present.push(entry);
+      byLayer.set(base, present);
+    }
+    return Array.from(byLayer.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .flatMap(([base, entries]) => {
+        const state = layerState(entries);
+        if (!state) return [];
+        const rows: Omit<AttributeRow, "layer" | "label">[] = [];
+        flattenValue("", state, rows);
+        return rows
+          .filter((row) => !q || row.path.toLowerCase().includes(q) || pretty(row.value).toLowerCase().includes(q))
+          .map((row) => ({ ...row, layer: base, label: layerLabel(base) }));
+      });
+  }, [result, query, layer]);
 
   const filteredCookies = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -311,6 +426,32 @@ function InspectorInner() {
                       {vendors.map((v) => <option key={v} value={v}>{v}</option>)}
                     </select>
                   )}
+                  {tab === "datalayer" && (
+                    <>
+                      <select
+                        aria-label="Data layer"
+                        className="input h-8 w-44 py-1 text-xs"
+                        value={layer}
+                        onChange={(e) => setLayer(e.target.value)}
+                      >
+                        <option value="all">All layers</option>
+                        {dataLayers.map((l) => <option key={l} value={l}>{layerLabel(l)}</option>)}
+                      </select>
+                      <div className="flex rounded-lg border border-slate-800 bg-slate-950/40 p-0.5">
+                        {(["pushes", "attributes"] as const).map((v) => (
+                          <button
+                            key={v}
+                            onClick={() => setDlView(v)}
+                            className={`rounded-md px-2.5 py-0.5 text-[11px] font-semibold capitalize transition ${
+                              dlView === v ? "bg-indigo-950/60 text-indigo-200" : "text-slate-500 hover:text-slate-200"
+                            }`}
+                          >
+                            {v}
+                          </button>
+                        ))}
+                      </div>
+                    </>
+                  )}
                   <div className="relative">
                     <Icon name="search" className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-500" />
                     <input
@@ -358,24 +499,65 @@ function InspectorInner() {
               </div>
             )}
 
-            {!loadingDetail && tab === "datalayer" && (
+            {!loadingDetail && tab === "datalayer" && dlView === "attributes" && (
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[760px] text-xs">
+                  <thead className="table-head">
+                    <tr>
+                      <th className="w-44 px-4 py-2.5">Layer</th>
+                      <th className="w-72 px-4 py-2.5">Attribute</th>
+                      <th className="px-4 py-2.5">Value</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {dataLayerAttributes.length === 0 && (
+                      <tr><td colSpan={3} className="px-4 py-10 text-center text-slate-500">No data layer attributes captured.</td></tr>
+                    )}
+                    {dataLayerAttributes.map((row, i) => (
+                      <tr key={`${row.layer}-${row.path}-${i}`} className="table-row align-top">
+                        <td className="mono px-4 py-2 text-indigo-300">{row.label}</td>
+                        <td className="mono px-4 py-2 break-all text-slate-200">{row.path}</td>
+                        <td className="px-4 py-2">
+                          <pre className="mono whitespace-pre-wrap break-all text-[11px] text-slate-400">{pretty(row.value)}</pre>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {!loadingDetail && tab === "datalayer" && dlView === "pushes" && (
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[700px] text-xs">
                   <thead className="table-head">
                     <tr>
-                      <th className="w-48 px-4 py-2.5">Event / key</th>
+                      <th className="w-72 px-4 py-2.5">Event / key</th>
                       <th className="px-4 py-2.5">Value</th>
                     </tr>
                   </thead>
                   <tbody>
                     {filteredDataLayer.length === 0 && (
-                      <tr><td colSpan={2} className="px-4 py-10 text-center text-slate-500">No data layer entries captured.</td></tr>
+                      <tr>
+                        <td colSpan={2} className="px-4 py-10 text-center text-slate-500">
+                          No data layer entries captured.
+                          <p className="mt-1 text-[11px] text-slate-600">
+                            Capture covers window.dataLayer (GTM / Adobe Launch), adobeDataLayer (Adobe Client Data Layer),
+                            digitalData (Adobe DTM), utag_data (Tealium), _paq (Matomo) and any custom *layer* variables.
+                          </p>
+                        </td>
+                      </tr>
                     )}
                     {filteredDataLayer.map((entry, i) => (
                       <tr key={`${entry.name}-${i}`} className="table-row align-top">
-                        <td className="mono px-4 py-2.5 text-indigo-300">{entry.name}</td>
+                        <td className="mono px-4 py-2.5 text-indigo-300">
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <span className="pill border-indigo-800/50 bg-indigo-950/40 text-indigo-300">{layerLabel(layerBase(entry.name))}</span>
+                            <span className="break-all">{entry.name}</span>
+                          </div>
+                        </td>
                         <td className="px-4 py-2.5">
-                          <pre className="mono max-h-56 overflow-auto whitespace-pre-wrap break-all text-[11px] text-slate-400">{pretty(entry.value)}</pre>
+                          <pre className="mono max-h-56 overflow-auto whitespace-pre-wrap break-all text-[11px] text-slate-400">{pretty(decodeEntryValue(entry.value))}</pre>
                         </td>
                       </tr>
                     ))}

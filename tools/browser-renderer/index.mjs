@@ -62,6 +62,140 @@ function hasGeo(opts) {
   return typeof opts.geoLatitude === "number" && typeof opts.geoLongitude === "number";
 }
 
+function pageEvaluate(page, fn, arg) {
+  return page
+    .evaluate(fn, arg)
+    .catch(() => null);
+}
+
+// --- client-side data layer capture ----------------------------------------
+//
+// Covers the data-layer conventions of the major tag management systems so the
+// Inspector can surface them:
+//
+//   dataLayer       — Google Tag Manager (and Adobe Launch's default layer)
+//   adobeDataLayer  — Adobe Client Data Layer (ACDL), callable object with
+//                     getState(); this is what Adobe Launch properties expose
+//   digitalData     — legacy Adobe DTM / IBM customer experience layer
+//   utag_data       — Tealium iQ
+//   _paq            — Matomo
+//
+// Adobe Launch (and CED setups generally) also allow custom data-layer names,
+// so a generic window scan picks up any array/object property whose name
+// mentions a "layer".
+//
+// Values are serialised to a JSON string (the ScanResult schema contract:
+// value holds raw JSON of the variable as a string). A circular-reference-safe
+// JSON walk replaces objects already emitted with an "[Circular]" marker
+// instead of throwing and silently dropping the entry.
+
+// Runs inside the page context; arg = { names, max }.
+function dataLayerEvaluate({ names, max }) {
+  const out = [];
+  const seen = new Set();
+
+  const safe = (v) => {
+    const weak = new WeakSet();
+    try {
+      const s = JSON.stringify(v, (_k, x) => {
+        if (typeof x === "object" && x !== null) {
+          if (weak.has(x)) return "[Circular]";
+          weak.add(x);
+        }
+        return x;
+      });
+      if (typeof s !== "string") return null;
+      return s.length > max ? s.slice(0, max) : s;
+    } catch {
+      return null;
+    }
+  };
+
+  const push = (name, value) => {
+    if (value === null || value === undefined) return;
+    if (Array.isArray(value)) {
+      if (seen.has(name)) return;
+      seen.add(name);
+      value.forEach((entry, i) => {
+        const s = safe(entry);
+        if (s !== null) out.push({ name: `${name}[${i}]`, value: s });
+      });
+      return;
+    }
+    if (typeof value !== "object") return;
+    if (seen.has(name)) return;
+    seen.add(name);
+    const s = safe(value);
+    if (s !== null) out.push({ name, value: s });
+  };
+
+  for (const name of names) {
+    let v;
+    try {
+      v = window[name];
+    } catch {
+      /* cross-origin / hardened globals may throw */
+    }
+    push(name, v);
+  }
+
+  // Adobe Client Data Layer: capture the merged state Adobe exposes.
+  try {
+    const acdl = window.adobeDataLayer;
+    if (acdl && typeof acdl.getState === "function") {
+      const s = safe(acdl.getState());
+      if (s) out.push({ name: "adobeDataLayer.getState", value: s });
+    }
+  } catch {
+    /* ignore */
+  }
+
+  // Adobe Launch runtime evidence (build/env of the property).
+  try {
+    const buildInfo = window._satellite && window._satellite.buildInfo;
+    if (buildInfo) {
+      const s = safe({ buildInfo });
+      if (s) out.push({ name: "_satellite", value: s });
+    }
+  } catch {
+    /* ignore */
+  }
+
+  // Generic discovery of custom-named layers (covers Adobe Launch custom
+  // data layer names, e.g. window.acdlData, window.analyticsLayer ...).
+  let keys = [];
+  try {
+    keys = Object.keys(window);
+  } catch {
+    /* ignore */
+  }
+  for (const k of keys) {
+    if (seen.has(k) || !/layer/i.test(k)) continue;
+    let v;
+    try {
+      v = window[k];
+    } catch {
+      continue;
+    }
+    push(k, v);
+  }
+
+  return out;
+}
+
+const DATA_LAYER_NAMES = ["dataLayer", "adobeDataLayer", "digitalData", "utag_data", "_paq"];
+// Per-entry JSON cap; guards the stdio protocol against pathological content.
+const DATA_LAYER_MAX_JSON = 1024 * 1024;
+
+async function captureDataLayer(page) {
+  if (!page) return [];
+  const out = await pageEvaluate(page, dataLayerEvaluate, {
+    names: DATA_LAYER_NAMES,
+    max: DATA_LAYER_MAX_JSON,
+  });
+  return Array.isArray(out) ? out : [];
+}
+
 async function render(url, opts) {
   const b = await getBrowser();
   const harPath = opts.captureHar
@@ -149,29 +283,7 @@ async function render(url, opts) {
 
   let dataLayer = [];
   if (opts.captureDataLayer) {
-    dataLayer = await page
-      .evaluate(() => {
-        const out = [];
-        const safe = (v) => {
-          try {
-            return JSON.stringify(v);
-          } catch {
-            return null;
-          }
-        };
-        if (Array.isArray(window.dataLayer)) {
-          window.dataLayer.forEach((v, i) => {
-            const s = safe(v);
-            if (s !== null) out.push({ name: `dataLayer[${i}]`, value: s });
-          });
-        }
-        if (window.digitalData && typeof window.digitalData === "object") {
-          const s = safe(window.digitalData);
-          if (s !== null) out.push({ name: "digitalData", value: s });
-        }
-        return out;
-      })
-      .catch(() => []);
+    dataLayer = await captureDataLayer(page);
   }
 
   await context.close();
@@ -340,29 +452,7 @@ async function collectState(requested) {
 
   let dataLayer = [];
   if (captureDataLayer) {
-    dataLayer = await page
-      .evaluate(() => {
-        const out = [];
-        const safe = (v) => {
-          try {
-            return JSON.stringify(v);
-          } catch {
-            return null;
-          }
-        };
-        if (Array.isArray(window.dataLayer)) {
-          window.dataLayer.forEach((v, i) => {
-            const s = safe(v);
-            if (s !== null) out.push({ name: `dataLayer[${i}]`, value: s });
-          });
-        }
-        if (window.digitalData && typeof window.digitalData === "object") {
-          const s = safe(window.digitalData);
-          if (s !== null) out.push({ name: "digitalData", value: s });
-        }
-        return out;
-      })
-      .catch(() => []);
+    dataLayer = await captureDataLayer(page);
   }
 
   return {
