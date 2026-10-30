@@ -1,142 +1,277 @@
-# OpenTagValidator Dashboard Integration Plan
+# Pageguard — Feature Plan v2
+
+Updated 2026-10-30 · status: proposed (implementation not started)
+
+> Supersedes the *OpenTagValidator Dashboard Integration Plan* (original v1).
+> v1 is **shipped**: dark dashboard, overview/audits/inspector/rules/consent,
+> audit rules with persistence, validation/beacons/consent/report APIs, CSV
+> export, inventory, cron schedules, alerting (channels/incidents/deliveries),
+> journey runner, privacy jurisdiction evaluator, reports + report schedules —
+> 60+ REST routes, both stores complete, zero TODOs in code.
 
 ## Goal
 
-Replace the current light Pageguard dashboard with the dark **OpenTagValidator**
-UI from `opentagvalidator_dashboard.html`, backed by real Pageguard audit data.
-Keep the existing scan/run engine, SSE streaming, sitemap, and evidence
-functionality, and extend the API with rules, validation, consent, overview, and
-report features.
+Harden the platform for sharing and unattended operation, close the quality
+gaps in alerting/reporting, and surface the evidence and reports the engines
+already produce but the dashboard doesn't show. Everything stays
+zero-config-compatible: an empty configuration behaves exactly like today.
 
-Confirmed decisions:
+## Baseline gaps (why these features)
 
-- Replace the current Pageguard UI.
-- Real data only; empty states when no audits exist.
-- Rules persist in both memory and PostgreSQL.
-- Reports export as JSON, CSV, and print-ready HTML (no binary PDF library).
+| # | Gap | Evidence |
+| --- | --- | --- |
+| G1 | No authentication/tenancy; any caller can hit every route | no auth middleware in `internal/api`; empty `projectId` falls back to first project (`internal/service/features_shared.go:13`) |
+| G2 | Alert delivery: single attempt, no retry/backoff/dedup window | `internal/service/features_alerts.go:358-372` |
+| G3 | Email channels + report recipients stored but never sent | `features_alerts.go:393`, `features_reports.go` (`recipients` unused) |
+| G4 | Multi-replica: 30 s ticker would double-fire schedules | `service.Tick` (`features_shared.go:78-91`), no advisory locks |
+| G5 | Rule targets: UI offers 10, backend validates 4 → 400s | `web/app/rules/page.tsx:30` vs `internal/service/governance_service.go:249-253` |
+| G6 | Run-scoped tag/cookie/request endpoints missing (roadmap Module 2 §5) | data only reachable via `/runs/{id}/results` |
+| G7 | Journey runs poll; steps/screenshots/expect diffs never visible | `features_journeys.go:123-193`; `web/app/journeys/page.tsx:340-366` |
+| G8 | Privacy batches evaluate one URL only | `features_privacy.go:189-207` (`TotalPages: 1`) |
+| G9 | HTML reports are JSON pretty-printed in `<pre>` | `features_reports.go:504-519` |
+| G10 | Run detail page light-themed; evidence panel has no DataLayer | `web/app/runs/[id]/page.tsx:451,476` |
+| G11 | Dead scaffolding: `alert_events` table + `domain.AlertEvent` unused | `migrations/0001_init.sql`, `internal/domain/domain.go:204` |
+| G12 | `docs/roadmap.md` statuses stale (scheduling marked ⬜) | vs `internal/cron` + `StartBackground`, both wired |
 
-## Feature mapping
+## Workstreams
 
-| Mockup section | Implementation |
-| --- | --- |
-| Overview | KPI cards, 7-day health trend, vendor distribution, live findings feed, re-scan, governance export |
-| Audit Runs & Crawler | Real audit form, live run metrics/terminal via SSE, audit history, CSV export |
-| Beacon & DataLayer Inspector | Run/page selector, beacon list with vendor filters, decoded query params, DataLayer JSON, raw URL, validation result |
-| Rules Configurator | Rule CRUD, enable/disable, search, create/edit modal, pass rates from latest run |
-| Consent & CMP Matrix | Derived pre-consent snapshot vs post-consent expectation, leak detection, compliance score |
-| Header/sidebar | Project selector, live in-flight count, Run Audit modal, active navigation |
+Backend B1–B10, frontend F1–F9. P0 = must, P1 = should, P2 = nice.
 
-## Assumptions and limitations
+| ID | Feature | Priority |
+| --- | --- | --- |
+| B1 | Authentication & tenancy (API keys) | P0 |
+| B2 | Alert delivery retry/backoff + dedup | P1 |
+| B3 | Email delivery (SMTP) | P1 |
+| B4 | Postgres advisory locks for schedulers | P1 |
+| B5 | Rule-target parity | P0 |
+| B6 | Run inventory endpoints (tags/cookies/requests) | P1 |
+| B7 | Journey run streaming + step reports | P1 |
+| B8 | Multi-page privacy batches | P1 |
+| B9 | First-class HTML reports | P2 |
+| B10 | Scaffolding & docs cleanup | P2 |
+| F1 | Run detail: dark restyle + DataLayer evidence | P0 |
+| F2 | Rules page target parity | P0 |
+| F3 | Alerts page: conditions + delivery history | P1 |
+| F4 | Journeys: step report viewer + definition editor | P1 |
+| F5 | Privacy: multi-page batches + score gauges | P1 |
+| F6 | Inventory: run selector | P1 |
+| F7 | Settings page (API keys) | P1 |
+| F8 | Chart components used across pages | P2 |
+| F9 | Demo-mode toggle (`NEXT_PUBLIC_DEMO=1`) | P2 |
 
-- The existing scanner captures pre-consent observations. Consent matrix is
-  **derived from captured evidence** (tags, cookies, third-party requests), not
-  from a second browser interaction. Labels state this clearly.
-- "Download PDF" uses a print-optimized HTML report and the browser print dialog.
-- Authentication/tenancy remains out of scope; `projectId` scopes all new data.
-- No demo/seed metrics are shown; the UI provides empty states and an optional
-  "Load starter rules" action.
+Out of scope: PDF export (print CSS in B9 instead), Redis/NATS event bus,
+RBAC beyond `admin|reader|writer`, journey assertion authoring beyond the
+existing `expect` engine.
+
+---
 
 ## Backend changes
 
-### 1. Domain model
+### B1. Authentication & tenancy (API keys)
 
-Add to `internal/domain`:
+- New `domain.APIKey`: `ID, ProjectID, Name, Prefix, KeyHash (sha256 of
+  `pg_…` secret, plaintext never stored), Roles []string {admin,reader,writer},
+  Enabled, ExpiresAt, LastUsedAt, CreatedAt`.
+- Store methods `CreateAPIKey/GetAPIKey/UpdateAPIKey/DeleteAPIKey/ListAPIKeys`
+  in both stores + migration `0005_api_keys.sql` (`pageguard_api_keys`).
+- `internal/api/auth.go` middleware, applied to `/api/v1/*` (skip `/healthz`):
+  parse `Authorization: Bearer pg_*`, hash-compare, set project scope in
+  request context, bump `LastUsedAt` (batched). Writers/required roles:
+  mutating verbs demand `writer`/`admin`; readers are read-only.
+- `PAGEGUARD_AUTH=keys` enables enforcement; default `none` keeps the API
+  open (backward compatible). Keys are created via CLI:
+  `pageguard --issue-key --project <id> --name <name> --roles admin` prints
+  the secret once.
+- `features_shared.resolveProject` becomes an error when a scoped non-admin
+  key omits `projectId` (no silent first-project fallback).
+- Limits: max 32 keys/project; key disabled → 403.
 
-- `AuditRule` with `ID`, `ProjectID`, `Name`, `Vendor`, `Enabled`,
-  `URLPattern`, `Target` (`request|event|tag|cookie`), `Parameter`, `Event`,
-  `Operator` (`exists|not_exists|equals|not_equals|matches|not_matches`),
-  `Expected`, `Severity`, `Description`, timestamps.
-- Extend `RunStats` with `Beacons`, `CriticalFindings`, `HealthScore`,
-  `ConsentScore`, `VendorScores map[string]float64`.
-- Extend `ScanConfig` with `ConsentSimulation` metadata.
+### B2. Alert delivery retries & dedup
 
-### 2. Store contract
+- Wrap delivery in `internal/service/features_alerts.go`: up to 3 attempts,
+  backoff 5 s → 30 s → 2 min; every attempt persists an `alert_deliveries`
+  row (status `pending|retrying|delivered|failed`, `attempt`, error text).
+- Delivery moves out of the run-finalize goroutine: incidents start
+  `pending`, `next_attempt_at` scheduled; `service.Tick` processes due
+  deliveries (also closes the retry loop on API restarts).
+- Dedup window: `alert_rules.min_interval_minutes` (default 30). Same
+  (ruleId, url, severity-ish fingerprint) inside the window updates the
+  existing incident (`trigger_count++`) instead of creating a new one.
+- `GET /api/v1/alert-incidents/?status=&limit=` gains filters and paging.
 
-Add rule persistence methods to `domain.Store`:
+### B3. Email delivery (SMTP)
 
-- `CreateRule`, `GetRule`, `UpdateRule`, `DeleteRule`, `ListRules`.
+- New `internal/mailer` package behind a `Mailer` interface: SMTP
+  implementation (no external deps) configured by
+  `PAGEGUARD_SMTP_HOST/PORT/USER/PASS/FROM/STARTTLS`; absent → feature
+  reports the existing "not configured" error verbatim.
+- Alert channels `kind=email` deliver through the mailer (B2 pipeline).
+- Report schedules email their artifact link/content to `recipients` on
+  generation; failure recorded in the report row (`email_status`).
 
-Implement in `internal/store/memory` and `internal/store/postgres`, plus
-`migrations/0003_audit_rules.sql` with an `audit_rules` table.
+### B4. Scheduler advisory locks (multi-replica safe)
 
-### 3. Rule engine (`internal/rules`)
+- Add `TryAdvisoryLock(ctx, key string) (acquired bool, unlock func(),
+  err error)` to `domain.Store`; Postgres: `pg_try_advisory_lock`; memory:
+  always true.
+- `service.Tick` acquires `pageguard:tick` before processing schedules,
+  report schedules and privacy batches; skips the tick when not acquired.
+  Helm chart may then move above 1 replica.
 
-- `request`: query-parameter matching on URL-scoped network requests.
-- `event`: flatten `dataLayer` JSON and check dotted paths/event names.
-- `tag`: match tag ID/name, optionally vendor-scoped.
-- `cookie`: match cookie name.
-- Vendor host patterns for Adobe, GA4/GTM, Meta, OneTrust when no regex is set.
-- Produce per-rule pass/fail/skipped results with evidence.
-- Convert failures into `domain.Finding` with `PluginID: "rules"`.
+### B5. Rule-target parity
 
-### 4. Run integration
+- `internal/rules` adds matchers: `beacon` (network request filtered through
+  `martech.IsTrackerRequest`, vendor-aware), `network` (any request, incl.
+  document), `page` (URL/pattern assertions only). `tag` matches script
+  URL/global context, `event` keeps dotted datapath semantics.
+- `governance_service.validateRule` target set becomes
+  `request|event|tag|cookie|beacon|network|page` + aliases
+  `datalayer→event`, `script→tag`; `consent/any` are rejected with a
+  message listing valid targets.
+- Starter rules gain one network example (e.g. no Adobe toolbar beacon on
+  non-cart pages).
 
-- Load enabled rules at run start.
-- Evaluate each fresh page, persist findings, emit `finding.created`.
-- Recompute run stats in `finalize`: health, beacons, critical findings,
-  consent score, per-vendor pass rates.
+### B6. Run inventory endpoints
 
-### 5. Governance services (`internal/governance`)
+- `GET /api/v1/runs/{id}/tags` (`vendor`, `purpose`, `thirdParty`),
+  `…/cookies` (`party`, `purpose`), `…/requests` (`host`, `method`,
+  `resourceType`, `thirdParty`) with paging.
+- Implementation: bucket the run's `ScanResult`s (same source as
+  `features_inventory.go:14-162`), no new tables; `/api/v1/inventory?runId=`
+  reuses it for the latest-run case.
 
-- Overview aggregation, 7-day trend, vendor distribution, violation feed.
-- Audit history across project scans and CSV export.
-- Validation aggregate per run/rule.
-- Beacon extraction and consent matrix.
-- Report builder for JSON, CSV, and print-ready HTML.
+### B7. Journey run streaming & step artifacts
 
-### 6. API additions
+- Journey engine emits onto the events bus: `journey.step.started`,
+  `journey.step.finished` (with step result + expect diffs),
+  `journey.finished` → persistent SSE `GET /api/v1/journey-runs/{id}/events`
+  (reuse the `run.snapshot`/heartbeat handling in `internal/api/stream.go`).
+- Screenshots: `journey_runs` gains `screenshot_uri`; engine uploads the
+  failure PNG (data URI for memory store, file/URI path for Postgres);
+  `GET /api/v1/journey-runs/{id}/screenshot?step=` returns image bytes.
 
-CORS middleware with `PAGEGUARD_CORS_ORIGINS` (default localhost:3000/3001).
+### B8. Multi-page privacy batches
 
-New endpoints:
+- `PrivacyBatch` input accepts `urls[]` or `scanId` (derive page set from the
+  run's successful pages, cap 50); `TotalPages/CompletedPages` become real;
+  evaluations run sequentially with per-row resume on restart.
+- Existing single-URL API shape stays valid (`urls` defaults to `[startUrl]`).
 
-- `GET /api/v1/overview?projectId=`
-- `GET /api/v1/audits?projectId=&limit=`
-- `POST /api/v1/audits`
-- `GET /api/v1/audits/export?projectId=`
-- `GET /api/v1/runs/{id}/validation`
-- `GET /api/v1/runs/{id}/beacons?url=`
-- `GET /api/v1/runs/{id}/consent?url=`
-- `GET /api/v1/runs/{id}/report?format=json|csv|html`
-- `GET|POST /api/v1/rules`
-- `PATCH|DELETE /api/v1/rules/{id}`
+### B9. First-class HTML reports
+
+- `internal/reports/render.go`: one styled, dependency-free HTML template per
+  report type (governance/consent/inventory/journey/privacy) — cards, tables,
+  print CSS (`@media print`), no JS. JSON/CSV formats unchanged; artifact
+  content-type correct; `?download` stream disposition unchanged.
+
+### B10. Cleanup
+
+- Drop unused `alert_events`-related scaffolding: remove `domain.AlertEvent`
+  and note the table as deprecated (no destructive migration).
+- Remove previously deferred `Integration` plugin stub commentary; keep the
+  validator-only plugin registry (B3 handles email in-service).
+- Update `docs/roadmap.md` statuses (scheduling ✅, alerting 🚧→B2/B3,
+  auth ⬜→B1) and `docs/ui.md` for the new pages.
+
+---
 
 ## Frontend changes
 
-- Dark shell with sticky header, sidebar, project selector, in-flight count,
-  Run Audit modal, inline SVG icons and charts.
-- Extend `web/lib/api.ts` with all new endpoint wrappers and types.
-- `/` Overview: KPIs, trend chart, vendor donut, filterable violation feed.
-- `/audits`: crawl form, live SSE progress/terminal, audit history, exports.
-- `/inspector`: run/page selection, beacon list, payload/DataLayer/raw tabs.
-- `/rules`: CRUD table, toggles, search, create/edit modal, pass rates.
-- `/consent`: pre/post consent matrix and leak summary.
-- `/runs/[id]`: keep existing evidence/sitemap/controls, restyled dark.
+### F1. Run detail: dark restyle + evidence DataLayer
 
-## Metric definitions
+- Restyle `web/app/runs/[id]/page.tsx` to the dashboard dark tokens (today
+  light backgrounds at `:451,476`).
+- EvidencePanel gains a **DataLayer** section — lift the Inspector's
+  decoded/magic (`layerBase`, `pretty(decodeEntryValue)`) rendering from
+  `web/app/inspector/page.tsx` into `web/components/DataLayerList.tsx` and
+  use it in both places, plus an "Open in Inspector" deep link.
 
-- **Health score:** passed validated pages / validated pages; fallback severity
-  penalty when no rules exist.
-- **Captured beacons:** tracker-like network requests.
-- **Critical anomalies:** critical findings in the latest project run.
-- **CMP compliance:** `100 × (1 − pre-consent leaks / non-essential trackers)`.
-- **Trend:** daily average health over seven days and vendor pass rates.
+### F2. Rules target parity
+
+- `web/app/rules/page.tsx:30` target list trimmed/aligned to B5 exactly;
+  unsupported selections can no longer produce 400s.
+
+### F3. Alerts UI depth
+
+- Rule builder adds the `ruleIds` match condition (backend-supported,
+  `features_alerts.go:486-504`) and min-interval setting (B2).
+- Email option stays but is marked "requires SMTP" until configured.
+- Incident drawer lists delivery attempts with per-attempt status/timestamp
+  (B2 rows), plus retry-now button.
+
+### F4. Journeys step reports
+
+- Run drawer shows the step timeline streaming live via the new SSE feed
+  (step status, expect diffs, duration), historical runs render the stored
+  step report; failure screenshots lazy-load per step (B7 endpoint).
+- Create form gains a full-definition JSON editor tab (engine supports a
+  richer schema than the 4 legacy actions the UI builds today) and the
+  `type` step action.
+
+### F5. Privacy batches & gauges
+
+- New evaluation modal supports pasting a URL list or picking a prior run's
+  pages (B8) with progress (`completed/total`) while the batch runs.
+- Regulation scores use the unused `RadialGauge` chart; consent-coverage
+  heatmap (`Heatmap` component) on the matrix.
+
+### F6. Inventory run selector
+
+- Run dropdown in `web/app/inventory/page.tsx` (API + client already take
+  `runId`, `web/lib/api.ts:904`); defaults to latest run.
+
+### F7. Settings page (API keys)
+
+- New `web/app/settings/page.tsx`: create keys (name, project, roles,
+  expiry), show-copy-once secret, enable/disable/delete, last-used column.
+  Requires `Authorization` plumbing in `web/lib/api.ts` (401 → key prompt).
+
+### F8. Charts inoculation
+
+- Use the idle chart components: per-vendor `HorizontalBars` on Inventory,
+  `StackedBar` for request third/first-party mix on Overview.
+
+### F9. Demo-mode toggle
+
+- Wire the dormant `web/lib/demo.ts` via `NEXT_PUBLIC_DEMO=1`: `request()`
+  in `web/lib/api.ts` short-circuits to demo fixtures keyed by path (+
+  `DemoBadge` in AppShell). For demos/design review only; default off.
+
+---
+
+## New/changed API surface
+
+| Route | Purpose | Workstream |
+| --- | --- | --- |
+| `GET/POST /api/v1/api-keys`, `PATCH/DELETE /api/v1/api-keys/{id}` | Key management for `admin` keys | B1 |
+| `GET /api/v1/runs/{id}/tags\|cookies\|requests` | Run-scoped inventory | B6 |
+| `GET /api/v1/journey-runs/{id}/events` | Journey SSE | B7 |
+| `GET /api/v1/journey-runs/{id}/screenshot?step=` | Step screenshots | B7 |
+| `PATCH /api/v1/alert-incidents/{id}/retry` | Requeue delivery | B2 |
+| Filters: `GET /api/v1/alert-incidents/?status=&limit=` | Triage queue paging | B2 |
+| `AlertRule.min_interval_minutes`, `PrivacyBatch.urls[]\|scanId` | Model fields | B2/B8 |
+| Auth is applied to **all** existing routes | tenancy | B1 |
+
+Environment additions: `PAGEGUARD_AUTH`, `PAGEGUARD_SMTP_*`,
+`NEXT_PUBLIC_DEMO`. Migration: `0005_api_keys.sql` (+ `min_interval_minutes`
+column, `journey_runs.screenshot_uri`).
 
 ## Verification
 
-- `gofmt -w` on changed Go files.
-- `go build ./...`, `go test ./...`, `go vet ./...`.
-- `cd web && npm run build` and `npx tsc --noEmit`.
-- API smoke test: project → audit → overview/validation/beacons/consent/rules/report.
+- `go build ./...`, `go vet ./...`, `go test ./...` (auth middleware, retry
+  backoff with injected clock, advisory-lock acquire/skip, target parity,
+  inventory endpoints, HTML render golden files).
+- `npx tsc --noEmit`; `npm run build` in `web/`.
+- API smoke: run an audit with `PAGEGUARD_AUTH=keys` (401 unauth, 200 with
+  key, scoped project isolation), force an alert (3 delivery attempts in
+  table), generate an HTML report and open in browser.
 
 ## Execution order
 
-1. Create `plan.md`.
-2. Domain types, store methods, memory/Postgres implementations, migration.
-3. Rule engine and tests.
-4. Orchestrator integration.
-5. Governance services and tests.
-6. API routes, CORS, tests.
-7. Frontend shell, theme, API client, components.
-8. Five dashboard sections and run-detail restyle.
-9. Docs and full verification.
+1. B5 + F2 (parity quick-win), B1 auth backend, F7 settings page.
+2. B2 + B3 + B4 (delivery pipeline), F3.
+3. B6 endpoints, F6.
+4. B7 + F4 (journey streaming/report viewer).
+5. B8 + F5 (privacy batches).
+6. B9 reports; B10 cleanup + docs refresh.
+7. F1 (run detail polish), F8, F9 last.

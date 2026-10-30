@@ -2,17 +2,43 @@ package service
 
 import (
 	"context"
+	"fmt"
 	"sort"
 	"time"
 
 	"github.com/pageguard/pageguard/internal/domain"
+	"github.com/pageguard/pageguard/internal/scope"
 )
 
-// resolveProject returns the requested project or, when id is empty, the first
-// project. It returns domain.ErrNotFound when no project exists.
+// resolveProject returns the requested project or, when id is empty, the
+// auth scope's pinned project (API keys), falling back to the first project.
+// It returns domain.ErrNotFound when no project exists.
 func (s *Service) resolveProject(ctx context.Context, id domain.ID) (*domain.Project, error) {
+	return s.resolveProjectIn(ctx, id, true)
+}
+
+// resolveProjectIn resolves a project with optional fallback to the first
+// project when `fallback` is set. Scoped request context (API keys) is
+// honoured before any fallback: an explicit id outside the scope is rejected.
+func (s *Service) resolveProjectIn(ctx context.Context, id domain.ID, fallback bool) (*domain.Project, error) {
+	scope, hasScope := scope.From(ctx)
+	if hasScope {
+		if !scope.HasRole(domain.RoleAdmin) {
+			if id.IsEmpty() {
+				id = scope.ProjectID
+			}
+			if id != scope.ProjectID {
+				return nil, fmt.Errorf("project %s is outside this API key's scope", id)
+			}
+		} else if id.IsEmpty() && !scope.ProjectID.IsEmpty() {
+			id = scope.ProjectID
+		}
+	}
 	if !id.IsEmpty() {
 		return s.store.GetProject(ctx, id)
+	}
+	if !fallback && hasScope {
+		return nil, domain.ErrNotFound
 	}
 	projects, err := s.store.ListProjects(ctx)
 	if err != nil {
@@ -88,6 +114,11 @@ func (s *Service) ProcessSchedules(ctx context.Context, now time.Time) {
 			continue
 		}
 	}
+}
+
+// authScope returns the request's authorization identity (API keys), if any.
+func authScope(ctx context.Context) (*scope.Scope, bool) {
+	return scope.From(ctx)
 }
 
 func sortByCreatedDesc[T any](items []T, created func(T) time.Time) []T {

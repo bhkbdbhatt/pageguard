@@ -1,6 +1,9 @@
 package domain
 
-import "time"
+import (
+	"strings"
+	"time"
+)
 
 // RuleTarget selects the evidence an AuditRule is evaluated against.
 type RuleTarget string
@@ -14,7 +17,37 @@ const (
 	RuleTargetTag RuleTarget = "tag"
 	// RuleTargetCookie evaluates an observed cookie.
 	RuleTargetCookie RuleTarget = "cookie"
+	// RuleTargetBeacon evaluates tracker-beacon requests only (martech-classified
+	// pixels/xhr/fetch/beacon traffic), optionally a query parameter on them.
+	RuleTargetBeacon RuleTarget = "beacon"
+	// RuleTargetNetwork evaluates all captured network requests, including the
+	// page document itself.
+	RuleTargetNetwork RuleTarget = "network"
+	// RuleTargetPage evaluates the page URL itself (redirect-aware final URL).
+	RuleTargetPage RuleTarget = "page"
 )
+
+// RuleTargetAliases maps dashboard/compatibility spellings onto canonical
+// targets. Applied when rules are created or updated.
+var RuleTargetAliases = map[RuleTarget]RuleTarget{
+	"datalayer": RuleTargetEvent,
+	"script":    RuleTargetTag,
+}
+
+// CanonicalizeTarget resolves an alias and reports whether the result is a
+// supported target.
+func CanonicalizeTarget(t RuleTarget) (RuleTarget, bool) {
+	normalized := RuleTarget(strings.ToLower(strings.TrimSpace(string(t))))
+	if aliased, ok := RuleTargetAliases[normalized]; ok {
+		normalized = aliased
+	}
+	switch normalized {
+	case RuleTargetRequest, RuleTargetEvent, RuleTargetTag, RuleTargetCookie,
+		RuleTargetBeacon, RuleTargetNetwork, RuleTargetPage:
+		return normalized, true
+	}
+	return normalized, false
+}
 
 // RuleOperator is the assertion applied by an AuditRule.
 type RuleOperator string

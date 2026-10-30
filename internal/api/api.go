@@ -12,6 +12,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/pageguard/pageguard/internal/domain"
@@ -22,23 +23,40 @@ import (
 
 // Server holds HTTP handlers and their dependencies.
 type Server struct {
-	svc      *service.Service
-	registry *plugin.Registry
-	upgrader ws.Upgrader
-	logger   *slog.Logger
+	svc          *service.Service
+	registry     *plugin.Registry
+	upgrader     ws.Upgrader
+	logger       *slog.Logger
+	authRequired bool
+
+	touchMu  sync.Mutex
+	touchLog map[domain.ID]time.Time
+}
+
+// Option customises an API Server.
+type Option func(*Server)
+
+// WithAuth enforces API-key authentication on /api/v1/* routes.
+func WithAuth(required bool) Option {
+	return func(s *Server) { s.authRequired = required }
 }
 
 // NewServer constructs an API server.
-func NewServer(svc *service.Service, registry *plugin.Registry, logger *slog.Logger) *Server {
+func NewServer(svc *service.Service, registry *plugin.Registry, logger *slog.Logger, opts ...Option) *Server {
 	if logger == nil {
 		logger = slog.Default()
 	}
-	return &Server{
+	s := &Server{
 		svc:      svc,
 		registry: registry,
 		upgrader: ws.Upgrader{MaxMessageSize: 1 << 20},
 		logger:   logger,
+		touchLog: map[domain.ID]time.Time{},
 	}
+	for _, opt := range opts {
+		opt(s)
+	}
+	return s
 }
 
 // Handler returns the fully wired HTTP handler.
@@ -136,7 +154,12 @@ func (s *Server) Handler() http.Handler {
 
 	mux.HandleFunc("GET /api/v1/plugins", s.handleListPlugins)
 
-	return s.cors(s.recover(s.logRequests(mux)))
+	mux.HandleFunc("GET /api/v1/api-keys", s.handleListAPIKeys)
+	mux.HandleFunc("POST /api/v1/api-keys", s.handleCreateAPIKey)
+	mux.HandleFunc("PATCH /api/v1/api-keys/{id}", s.handleUpdateAPIKey)
+	mux.HandleFunc("DELETE /api/v1/api-keys/{id}", s.handleDeleteAPIKey)
+
+	return s.cors(s.scope(s.recover(s.logRequests(mux))))
 }
 
 func (s *Server) cors(next http.Handler) http.Handler {

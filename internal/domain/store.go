@@ -142,4 +142,13 @@ type Store interface {
 	DeleteReportSchedule(ctx context.Context, id ID) error
 	ListReportSchedules(ctx context.Context, projectID ID) ([]*ReportSchedule, error)
 	ListDueReportSchedules(ctx context.Context, now time.Time, limit int) ([]*ReportSchedule, error)
+
+	// API keys authenticate callers and pin their project scope. Only the
+	// hash of the secret is persisted; NewAPIKeySecret mints the plaintext.
+	CreateAPIKey(ctx context.Context, k *APIKey) error
+	GetAPIKey(ctx context.Context, id ID) (*APIKey, error)
+	UpdateAPIKey(ctx context.Context, k *APIKey) error
+	DeleteAPIKey(ctx context.Context, id ID) error
+	ListAPIKeys(ctx context.Context, projectID ID) ([]*APIKey, error)
+	GetAPIKeyByHash(ctx context.Context, keyHash string) (*APIKey, error)
 }

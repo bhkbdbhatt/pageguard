@@ -71,7 +71,13 @@ func Evaluate(r *domain.AuditRule, sr *domain.ScanResult) Result {
 	var err error
 	switch r.Target {
 	case domain.RuleTargetRequest:
-		matches, err = requestObservations(r, sr)
+		matches, err = requestObservations(r, sr, false)
+	case domain.RuleTargetBeacon:
+		matches, err = requestObservations(r, sr, true)
+	case domain.RuleTargetNetwork:
+		matches = networkObservations(r, sr)
+	case domain.RuleTargetPage:
+		matches = pageObservations(sr)
 	case domain.RuleTargetEvent:
 		matches, err = eventObservations(r, sr)
 	case domain.RuleTargetTag:
@@ -105,18 +111,30 @@ type observation struct {
 	source  string
 }
 
-func requestObservations(r *domain.AuditRule, sr *domain.ScanResult) ([]observation, error) {
+// requestObservations builds observations from network requests. Trackers
+// restricts to beacon-like requests (martech classification) for the beacon
+// target; the plain request target keeps the classic query-parameter semantics.
+// When no parameter is set (beacon/network) every matching request is itself an
+// observation, with the request host as the value.
+func requestObservations(r *domain.AuditRule, sr *domain.ScanResult, trackers bool) ([]observation, error) {
 	param := strings.TrimSpace(r.Parameter)
-	if param == "" {
+	if r.Target == domain.RuleTargetRequest && param == "" {
 		return nil, fmt.Errorf("request rule requires a parameter")
 	}
 	out := []observation{}
 	for _, req := range sr.Requests {
+		if trackers && !martech.IsTrackerRequest(req) {
+			continue
+		}
 		host := req.Host
 		if host == "" {
 			host = martech.HostURL(req.URL)
 		}
 		if r.Vendor != "" && !martech.MatchVendor(r.Vendor, host) {
+			continue
+		}
+		if param == "" {
+			out = append(out, observation{present: true, value: host, source: req.URL})
 			continue
 		}
 		u, err := url.Parse(req.URL)
@@ -133,6 +151,48 @@ func requestObservations(r *domain.AuditRule, sr *domain.ScanResult) ([]observat
 		}
 	}
 	return out, nil
+}
+
+// networkObservations covers every captured request, including the page
+// document, with optional query-parameter assertions (no tracking filter).
+func networkObservations(r *domain.AuditRule, sr *domain.ScanResult) []observation {
+	out := []observation{}
+	for _, req := range sr.Requests {
+		host := req.Host
+		if host == "" {
+			host = martech.HostURL(req.URL)
+		}
+		if r.Vendor != "" && !martech.MatchVendor(r.Vendor, host) {
+			continue
+		}
+		if param := strings.TrimSpace(r.Parameter); param != "" {
+			u, err := url.Parse(req.URL)
+			if err != nil {
+				continue
+			}
+			values, ok := u.Query()[param]
+			if !ok {
+				out = append(out, observation{source: req.URL})
+				continue
+			}
+			for _, v := range values {
+				out = append(out, observation{present: true, value: v, source: req.URL})
+			}
+			continue
+		}
+		out = append(out, observation{present: true, value: host, source: req.URL})
+	}
+	return out
+}
+
+// pageObservations exposes the final page URL as a single observation so rules
+// can assert on it with equals/matches/not_exists operators.
+func pageObservations(sr *domain.ScanResult) []observation {
+	value := sr.FinalURL
+	if value == "" {
+		value = sr.URL
+	}
+	return []observation{{present: value != "", value: value, source: sr.URL}}
 }
 
 func eventObservations(r *domain.AuditRule, sr *domain.ScanResult) ([]observation, error) {

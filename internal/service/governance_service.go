@@ -36,14 +36,12 @@ func (s *Service) CreateAudit(ctx context.Context, req CreateAuditRequest) (*dom
 	}
 	projectID := req.ProjectID
 	if projectID.IsEmpty() {
-		projects, err := s.store.ListProjects(ctx)
+		// Scope-aware fallback: pinned API-key project, else first project.
+		proj, err := s.resolveProject(ctx, projectID)
 		if err != nil {
 			return nil, nil, err
 		}
-		if len(projects) == 0 {
-			return nil, nil, fmt.Errorf("create a project before running an audit")
-		}
-		projectID = projects[0].ID
+		projectID = proj.ID
 	}
 	if _, err := s.store.GetProject(ctx, projectID); err != nil {
 		return nil, nil, err
@@ -100,14 +98,11 @@ func (s *Service) CreateAudit(ctx context.Context, req CreateAuditRequest) (*dom
 func (s *Service) CreateRule(ctx context.Context, r *domain.AuditRule) (*domain.AuditRule, error) {
 	projectID := r.ProjectID
 	if projectID.IsEmpty() {
-		projects, err := s.store.ListProjects(ctx)
+		proj, err := s.resolveProject(ctx, projectID)
 		if err != nil {
-			return nil, err
-		}
-		if len(projects) == 0 {
 			return nil, fmt.Errorf("create a project before adding rules")
 		}
-		projectID = projects[0].ID
+		projectID = proj.ID
 		r.ProjectID = projectID
 	}
 	if _, err := s.store.GetProject(ctx, projectID); err != nil {
@@ -200,14 +195,11 @@ func (s *Service) DeleteRule(ctx context.Context, id domain.ID) error {
 // StarterRules installs a small baseline rule set for a project.
 func (s *Service) StarterRules(ctx context.Context, projectID domain.ID) ([]*domain.AuditRule, error) {
 	if projectID.IsEmpty() {
-		projects, err := s.store.ListProjects(ctx)
+		proj, err := s.resolveProject(ctx, projectID)
 		if err != nil {
-			return nil, err
-		}
-		if len(projects) == 0 {
 			return nil, fmt.Errorf("create a project before adding rules")
 		}
-		projectID = projects[0].ID
+		projectID = proj.ID
 	}
 	existing, err := s.store.ListRules(ctx, projectID)
 	if err != nil {
@@ -246,10 +238,12 @@ func validateRule(r *domain.AuditRule) error {
 	if r.Name == "" {
 		return fmt.Errorf("rule name is required")
 	}
-	switch r.Target {
-	case domain.RuleTargetRequest, domain.RuleTargetEvent, domain.RuleTargetTag, domain.RuleTargetCookie:
-	default:
-		return fmt.Errorf("target must be request, event, tag or cookie")
+	// Normalize dashboard/compatibility aliases to canonical targets.
+	if canonical, ok := domain.CanonicalizeTarget(r.Target); ok {
+		r.Target = canonical
+	} else {
+		return fmt.Errorf(
+			"target must be one of beacon, cookie, event, network, page, request or tag (aliases: datalayer, script)")
 	}
 	switch r.Operator {
 	case domain.RuleOpExists, domain.RuleOpNotExists, domain.RuleOpEquals, domain.RuleOpNotEquals, domain.RuleOpMatches, domain.RuleOpNotMatches:

@@ -127,3 +127,98 @@ func TestSummarize(t *testing.T) {
 		t.Fatalf("vendor scores = %+v", agg.VendorScores)
 	}
 }
+
+func TestBeaconRules(t *testing.T) {
+	sr := &domain.ScanResult{
+		URL: "https://shop.example/products",
+		Requests: []domain.NetworkRequest{
+			{URL: "https://connect.facebook.net/fbevents?fired=1", Host: "connect.facebook.net", ResourceType: "script", ThirdParty: true},
+			{URL: "https://shop.example/logo.png", Host: "shop.example", ResourceType: "image"},
+			{URL: "https://adobedc.net/ee/collection?ev=purchase", Host: "adobedc.net", ResourceType: "xhr", ThirdParty: true},
+		},
+	}
+	// A Meta beacon may not fire anywhere: not_exists over all Meta beacons.
+	block := &domain.AuditRule{
+		ID: domain.NewID(), Name: "No Meta beacons", Enabled: true, Vendor: "Meta",
+		Target: domain.RuleTargetBeacon, Operator: domain.RuleOpNotExists, Severity: domain.SevCritical,
+	}
+	if res := resultFor(t, block, sr); res.Status != StatusFail {
+		t.Fatalf("expected beacon failure, got %s (%s)", res.Status, res.Reason)
+	}
+	// Adobe collect beacons must not carry the (absent here) ev parameter.
+	param := &domain.AuditRule{
+		ID: domain.NewID(), Name: "Adobe ev must be purchase", Enabled: true, Vendor: "Adobe",
+		Target: domain.RuleTargetBeacon, Parameter: "ev", Operator: domain.RuleOpEquals, Expected: "purchase",
+	}
+	if res := resultFor(t, param, sr); res.Status != StatusPass {
+		t.Fatalf("expected beacon param pass, got %s (%s)", res.Status, res.Reason)
+	}
+	// First-party asset requests are excluded from beacon evaluation.
+	firstParty := &domain.AuditRule{
+		ID: domain.NewID(), Name: "Own asset is not a beacon", Enabled: true,
+		Target: domain.RuleTargetBeacon, Operator: domain.RuleOpNotExists,
+	}
+	if res := resultFor(t, firstParty, sr); res.Status != StatusFail {
+		t.Fatalf("expected external beacons to fail not_exists, got %s (%s)", res.Status, res.Reason)
+	}
+}
+
+func TestNetworkRules(t *testing.T) {
+	sr := &domain.ScanResult{
+		URL:      "https://shop.example",
+		FinalURL: "https://shop.example/home",
+		Requests: []domain.NetworkRequest{
+			{URL: "https://shop.example/", Host: "shop.example", ResourceType: "document"},
+			{URL: "https://cdn.example/analytics.js", Host: "cdn.example", ResourceType: "script", ThirdParty: true},
+		},
+	}
+	// Unlike beacons, network rules see the document request.
+	doc := &domain.AuditRule{
+		ID: domain.NewID(), Name: "Document served by first party", Enabled: true,
+		Target: domain.RuleTargetNetwork, Operator: domain.RuleOpExists,
+	}
+	if res := resultFor(t, doc, sr); res.Status != StatusPass {
+		t.Fatalf("expected network exists pass, got %s (%s)", res.Status, res.Reason)
+	}
+	host := &domain.AuditRule{
+		ID: domain.NewID(), Name: "No CDN script", Enabled: true, Vendor: "GA4",
+		Target: domain.RuleTargetNetwork, Operator: domain.RuleOpNotExists,
+	}
+	if res := resultFor(t, host, sr); res.Status != StatusPass {
+		t.Fatalf("expected vendor-filtered network pass, got %s (%s)", res.Status, res.Reason)
+	}
+}
+
+func TestPageRules(t *testing.T) {
+	sr := &domain.ScanResult{URL: "https://shop.example/amp/product", FinalURL: "https://shop.example/product"}
+	// Canonical URL enforcement: AMP redirect must be canonicalized.
+	rule := &domain.AuditRule{
+		ID: domain.NewID(), Name: "Canonical product URL", Enabled: true,
+		Target: domain.RuleTargetPage, Operator: domain.RuleOpNotMatches, Expected: "/amp/",
+		Severity: domain.SevHigh,
+	}
+	if res := resultFor(t, rule, sr); res.Status != StatusPass {
+		t.Fatalf("expected page pass (amp resolved away), got %s (%s)", res.Status, res.Reason)
+	}
+	// Redirect left the AMP suffix in place: final URL keeps /amp/ ? must fail.
+	redirected := &domain.ScanResult{
+		URL: "https://shop.example/amp/product", FinalURL: "https://shop.example/amp/product/canonical",
+	}
+	if res := resultFor(t, rule, redirected); res.Status != StatusFail {
+		t.Fatalf("expected page fail, got %s (%s)", res.Status, res.Reason)
+	}
+}
+
+func TestTargetAliases(t *testing.T) {
+	tgt, ok := domain.CanonicalizeTarget(" datalayer ")
+	if !ok || tgt != domain.RuleTargetEvent {
+		t.Fatalf("datalayer alias = %q ok=%v", tgt, ok)
+	}
+	tgt, ok = domain.CanonicalizeTarget("Script")
+	if !ok || tgt != domain.RuleTargetTag {
+		t.Fatalf("script alias = %q ok=%v", tgt, ok)
+	}
+	if _, ok := domain.CanonicalizeTarget("any"); ok {
+		t.Fatal("any target should be rejected")
+	}
+}

@@ -36,6 +36,7 @@ type Store struct {
 	privacyEvals    map[domain.ID]*domain.PrivacyEvaluation
 	reports         map[domain.ID]*domain.Report
 	reportSchedules map[domain.ID]*domain.ReportSchedule
+	apiKeys         map[domain.ID]*domain.APIKey
 }
 
 // New returns an empty store.
@@ -62,6 +63,7 @@ func New() *Store {
 		privacyEvals:    map[domain.ID]*domain.PrivacyEvaluation{},
 		reports:         map[domain.ID]*domain.Report{},
 		reportSchedules: map[domain.ID]*domain.ReportSchedule{},
+		apiKeys:         map[domain.ID]*domain.APIKey{},
 	}
 }
 

@@ -27,7 +27,9 @@ import {
 } from "../../lib/api";
 import { formatPercent, shortId, timeAgo } from "../../lib/format";
 
-const TARGETS = ["beacon", "request", "cookie", "tag", "datalayer", "consent", "page", "script", "network", "any"] as const;
+// Must match the engine's supported targets (internal/rules + governance
+// validation): beacon, cookie, event, network, page, request, tag.
+const TARGETS = ["beacon", "request", "cookie", "tag", "event", "network", "page"] as const;
 const OPERATORS = ["exists", "not_exists", "equals", "not_equals", "matches", "not_matches"] as const;
 const SEVERITIES = ["info", "low", "medium", "high", "critical"] as const;
 
