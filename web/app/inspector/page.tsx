@@ -78,6 +78,12 @@ function layerLabel(base: string) {
       return "Tealium";
     case "_paq":
       return "Matomo";
+    case "_mtm":
+      return "Matomo Tag Manager";
+    case "s":
+      return "Adobe AppMeasurement";
+    case "utag":
+      return "Tealium iQ (utag.data)";
     case "_satellite":
       return "Adobe Launch";
     default:
@@ -543,7 +549,8 @@ function InspectorInner() {
                           No data layer entries captured.
                           <p className="mt-1 text-[11px] text-slate-600">
                             Capture covers window.dataLayer (GTM / Adobe Launch), adobeDataLayer (Adobe Client Data Layer),
-                            digitalData (Adobe DTM), utag_data (Tealium), _paq (Matomo) and any custom *layer* variables.
+                            digitalData (Adobe DTM), utag_data / utag.data (Tealium), _paq / _mtm (Matomo), _satellite
+                            build info, Adobe AppMeasurement (window.s) and any custom *layer* variables.
                           </p>
                         </td>
                       </tr>

@@ -68,8 +68,13 @@ Highlights:
 
 `WithCapture(har, dataLayer)` on the manager (or `--capture-har` /
 `--capture-datalayer` on the CLI) requests a HAR archive and/or data-layer
-payloads from the browser worker (`tools/browser-renderer/index.mjs`). HTTP-mode
-scans simply leave these empty.
+payloads from the browser worker (`tools/browser-renderer/index.mjs`). Capture
+covers `window.dataLayer` (GTM / Adobe Launch), `adobeDataLayer` (Adobe Client
+Data Layer, via `getState()`), `digitalData`, `utag_data` / `utag.data`
+(Tealium), `_paq` / `_mtm` (Matomo), `_satellite` build info, Adobe
+AppMeasurement identity (`window.s` when shaped like the Analytics library) and
+any custom `*layer*` variables holding real content. HTTP-mode scans simply
+leave these empty.
 
 ## 6. API
 

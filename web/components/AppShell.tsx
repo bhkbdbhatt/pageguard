@@ -10,6 +10,7 @@ import {
   listProjects,
   type Project,
 } from "../lib/api";
+import SpotlightTour, { hasSeenTour, rememberTour, TOUR_STEPS } from "./Tour";
 import { Icon, type IconName } from "./icons";
 import { Modal } from "./ui";
 
@@ -72,6 +73,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const [auditPrefill, setAuditPrefill] = useState<AuditPrefill>();
   const [projectOpen, setProjectOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [tourOpen, setTourOpen] = useState(false);
 
   const refreshProjects = useCallback(async () => {
     const list = await listProjects();
@@ -117,6 +119,15 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     setAuditOpen(true);
   }, []);
 
+  const closeTour = useCallback(() => {
+    setTourOpen(false);
+    rememberTour();
+  }, []);
+
+  useEffect(() => {
+    if (!hasSeenTour()) setTourOpen(true);
+  }, []);
+
   const value = useMemo(
     () => ({ project, projects, loadingProjects, setProject, refreshProjects, openAudit }),
     [project, projects, loadingProjects, setProject, refreshProjects, openAudit],
@@ -142,7 +153,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <AppContext.Provider value={value}>
       <div className="min-h-screen lg:flex">
-        <aside className="hidden w-64 shrink-0 flex-col border-r border-slate-800 bg-slate-950/80 lg:flex">
+        <aside data-tour="sidebar" className="hidden w-64 shrink-0 flex-col border-r border-slate-800 bg-slate-950/80 lg:flex">
           <div className="flex h-16 items-center gap-2.5 border-b border-slate-800 px-5">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-600 text-white shadow-lg shadow-indigo-950/40">
               <Icon name="shield" className="h-4 w-4" />
@@ -188,7 +199,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <div className="hidden items-center gap-2 rounded-lg border border-slate-800 bg-slate-900/70 px-2.5 py-1.5 sm:flex">
+                <div data-tour="inflight-chip" className="hidden items-center gap-2 rounded-lg border border-slate-800 bg-slate-900/70 px-2.5 py-1.5 sm:flex">
                   <Icon name="activity" className="h-3.5 w-3.5 text-emerald-400" />
                   <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
                     {inflight} live
@@ -197,6 +208,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                 <div className="relative">
                   <select
                     aria-label="Project"
+                    data-tour="project-select"
                     value={project?.id ?? ""}
                     onChange={(e) => {
                       const next = projects.find((p) => p.id === e.target.value);
@@ -210,17 +222,30 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                     ))}
                   </select>
                 </div>
-                <button onClick={() => setProjectOpen(true)} className="btn hidden sm:inline-flex" title="Create project">
+                <button
+                  onClick={() => setProjectOpen(true)}
+                  data-tour="project-btn"
+                  className="btn hidden sm:inline-flex"
+                  title="Create project"
+                >
                   <Icon name="plus" className="h-3.5 w-3.5" />
                   Project
                 </button>
-                <button onClick={() => openAudit()} className="btn-primary h-9">
+                <button
+                  onClick={() => setTourOpen(true)}
+                  className="btn h-9 w-9 px-0"
+                  title="Replay product tour"
+                  aria-label="Replay product tour"
+                >
+                  <Icon name="info" className="h-4 w-4" />
+                </button>
+                <button onClick={() => openAudit()} data-tour="run-audit" className="btn-primary h-9">
                   <Icon name="play" className="h-3.5 w-3.5" />
                   Run Audit
                 </button>
               </div>
             </div>
-            <nav className="flex gap-1 overflow-x-auto border-t border-slate-800/70 px-3 py-2 lg:hidden">
+            <nav data-tour="mobile-nav" className="flex gap-1 overflow-x-auto border-t border-slate-800/70 px-3 py-2 lg:hidden">
               {NAV.map((item) => {
                 const active = navActive(pathname, item.href);
                 return (
@@ -261,6 +286,15 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           setProjectOpen(false);
         }}
         onRefresh={refreshProjects}
+      />
+      <SpotlightTour
+        open={tourOpen}
+        steps={TOUR_STEPS}
+        onClose={closeTour}
+        onCta={() => {
+          closeTour();
+          openAudit();
+        }}
       />
       {error && (
         <div className="fixed bottom-4 left-4 z-50 max-w-sm rounded-xl border border-rose-800/60 bg-rose-950/90 px-4 py-3 text-xs text-rose-200 shadow-xl">

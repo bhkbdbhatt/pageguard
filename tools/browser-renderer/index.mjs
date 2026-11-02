@@ -77,55 +77,120 @@ function pageEvaluate(page, fn, arg) {
 //   adobeDataLayer  — Adobe Client Data Layer (ACDL), callable object with
 //                     getState(); this is what Adobe Launch properties expose
 //   digitalData     — legacy Adobe DTM / IBM customer experience layer
-//   utag_data       — Tealium iQ
+//   utag_data       — Tealium iQ (utag.data mirrors the profile after load)
 //   _paq            — Matomo
+//   _mtm            — Matomo Tag Manager
 //
 // Adobe Launch (and CED setups generally) also allow custom data-layer names,
-// so a generic window scan picks up any array/object property whose name
-// mentions a "layer".
+// so a generic window scan picks up array/object properties whose name
+// mentions a "layer". Unknown names are only kept when the value carries
+// layer content (a non-empty array of pushes, or an object with own keys);
+// globals holding DOM nodes, functions, or UI-widget namespaces are skipped.
+// Callable layers exposing a getState() function are captured through their
+// merged state, matching the ACDL convention.
+//
+// Adobe runtime evidence is captured alongside the layers:
+//   adobeDataLayer.getState() — merged ACDL state
+//   _satellite.buildInfo      — Launch property build info
+//   s (AppMeasurement)        — account/version/tracking server of the classic
+//                               Adobe Analytics library, when it quacks like it
+//   utag.data                 — Tealium iQ profile data
 //
 // Values are serialised to a JSON string (the ScanResult schema contract:
-// value holds raw JSON of the variable as a string). A circular-reference-safe
-// JSON walk replaces objects already emitted with an "[Circular]" marker
-// instead of throwing and silently dropping the entry.
+// value holds raw JSON of the variable as a string). Serialisation is cycle-
+// safe via the ancestor chain: only objects on the current path are marked
+// "[Circular]", while models that merely share a sub-object emit it once per
+// reference. Depth, array width and entry count are capped so pathological
+// content cannot stall the page or the stdio protocol.
 
 // Runs inside the page context; arg = { names, max }.
 function dataLayerEvaluate({ names, max }) {
+  const MAX_DEPTH = 32;
+  const MAX_ARRAY_ENTRIES = 512;
+  const MAX_ENTRIES = 1024;
+
   const out = [];
   const seen = new Set();
 
-  const safe = (v) => {
-    const weak = new WeakSet();
-    try {
-      const s = JSON.stringify(v, (_k, x) => {
-        if (typeof x === "object" && x !== null) {
-          if (weak.has(x)) return "[Circular]";
-          weak.add(x);
+  // Serialise one value to a bounded JSON string. ancestors is the set of
+  // objects on the current path (added before descending, removed on the way
+  // out), so only genuine cycles become "[Circular]". Returns null when the
+  // value carries no JSON at all (functions, throwing getters, ...).
+  const serialise = (v) => {
+    const walk = (x, depth, ancestors) => {
+      const t = typeof x;
+      if (x === null) return "null";
+      if (t === "string" || t === "number" || t === "boolean")
+        return JSON.stringify(x); // NaN/Infinity -> null, like JSON.stringify
+      if (t === "bigint") return JSON.stringify(x.toString());
+      if (t !== "object") return undefined; // function, symbol, undefined
+      if (x instanceof Date) return JSON.stringify(x);
+      if (typeof Node !== "undefined" && x instanceof Node) return '"[Node]"';
+      if (ancestors.has(x)) return '"[Circular]"';
+      if (depth >= MAX_DEPTH) return '"[Depth]"';
+      ancestors.add(x);
+      if (Array.isArray(x)) {
+        const n = Math.min(x.length, MAX_ARRAY_ENTRIES);
+        const parts = [];
+        for (let i = 0; i < n; i++) {
+          const s = walk(x[i], depth + 1, ancestors);
+          parts.push(s === undefined ? "null" : s);
         }
-        return x;
-      });
-      if (typeof s !== "string") return null;
-      return s.length > max ? s.slice(0, max) : s;
+        if (n < x.length) parts.push('"[Truncated]"');
+        ancestors.delete(x);
+        return `[${parts.join(",")}]`;
+      }
+      const parts = [];
+      for (const k of Object.keys(x)) {
+        const s = walk(x[k], depth + 1, ancestors);
+        if (s !== undefined) parts.push(`${JSON.stringify(k)}:${s}`);
+      }
+      ancestors.delete(x);
+      return `{${parts.join(",")}}`;
+    };
+    let text;
+    try {
+      text = walk(v, 0, new Set());
     } catch {
-      return null;
+      /* exotic getters can throw mid-walk */
+    }
+    if (typeof text !== "string") return null;
+    return text.length > max ? text.slice(0, max) : text;
+  };
+
+  // hasContent gates the generic window scan: an empty array or object holds
+  // no layer evidence, so unknown names are skipped until they hold something.
+  // A genuinely unreadable value falls through to the serialiser, which is
+  // guarded on its own.
+  const hasContent = (v) => {
+    try {
+      return Array.isArray(v) ? v.length > 0 : Object.keys(v).length > 0;
+    } catch {
+      return true;
     }
   };
 
-  const push = (name, value) => {
-    if (value === null || value === undefined) return;
+  const push = (name, value, unknown = false) => {
+    if (value === null || value === undefined || out.length >= MAX_ENTRIES)
+      return;
+    if (unknown && !hasContent(value)) return;
+    if (typeof value === "object" && value.nodeType) return; // DOM node
     if (Array.isArray(value)) {
       if (seen.has(name)) return;
       seen.add(name);
-      value.forEach((entry, i) => {
-        const s = safe(entry);
+      // One entry per push, so the Inspector can replay layer events in order.
+      const n = Math.min(value.length, MAX_ARRAY_ENTRIES);
+      for (let i = 0; i < n; i++) {
+        if (out.length >= MAX_ENTRIES) return;
+        const s = serialise(value[i]);
         if (s !== null) out.push({ name: `${name}[${i}]`, value: s });
-      });
+      }
       return;
     }
     if (typeof value !== "object") return;
     if (seen.has(name)) return;
     seen.add(name);
-    const s = safe(value);
+    const s = serialise(value);
     if (s !== null) out.push({ name, value: s });
   };
 
@@ -136,15 +201,38 @@ function dataLayerEvaluate({ names, max }) {
     } catch {
       /* cross-origin / hardened globals may throw */
     }
+    // Callable layers (Adobe ACDL) expose their merged state via getState();
+    // the underlying event queue lives inside the callable object.
+    let callable = false;
+    try {
+      callable = !!v && typeof v.getState === "function";
+    } catch {
+      /* opaque proxy */
+    }
+    if (callable) {
+      try {
+        const s = serialise(v.getState());
+        if (s) out.push({ name: `${name}.getState`, value: s });
+      } catch {
+        /* getState may throw on hardened pages */
+      }
+      continue;
+    }
     push(name, v);
   }
 
-  // Adobe Client Data Layer: capture the merged state Adobe exposes.
+  // Tealium iQ: utag.data mirrors the loaded profile's data object.
   try {
-    const acdl = window.adobeDataLayer;
-    if (acdl && typeof acdl.getState === "function") {
-      const s = safe(acdl.getState());
-      if (s) out.push({ name: "adobeDataLayer.getState", value: s });
+    const utag = window.utag;
+    const data = utag && utag.data;
+    if (
+      data &&
+      typeof data === "object" &&
+      !Array.isArray(data) &&
+      Object.keys(data).length > 0
+    ) {
+      const s = serialise(data);
+      if (s) out.push({ name: "utag.data", value: s });
     }
   } catch {
     /* ignore */
@@ -154,15 +242,40 @@ function dataLayerEvaluate({ names, max }) {
   try {
     const buildInfo = window._satellite && window._satellite.buildInfo;
     if (buildInfo) {
-      const s = safe({ buildInfo });
+      const s = serialise({ buildInfo });
       if (s) out.push({ name: "_satellite", value: s });
     }
   } catch {
     /* ignore */
   }
 
-  // Generic discovery of custom-named layers (covers Adobe Launch custom
-  // data layer names, e.g. window.acdlData, window.analyticsLayer ...).
+  // Adobe AppMeasurement (classic Analytics): "s" is such a common window
+  // global that only treat it as AppMeasurement when it has both the track
+  // function and an account string.
+  try {
+    const s = window.s;
+    if (
+      s &&
+      typeof s === "object" &&
+      typeof s.t === "function" &&
+      typeof s.account === "string" &&
+      s.account
+    ) {
+      const snap = serialise({
+        account: s.account,
+        version: s.version,
+        trackingServer: s.trackingServer,
+        trackingServerSecure: s.trackingServerSecure,
+        currencyCode: s.currencyCode,
+      });
+      if (snap) out.push({ name: "s.tracking", value: snap });
+    }
+  } catch {
+    /* ignore */
+  }
+
+  // Generic discovery of custom-named layers (covers Adobe Launch custom data
+  // layer names, e.g. window.acdlDataLayer, window.analyticsLayer ...).
   let keys = [];
   try {
     keys = Object.keys(window);
@@ -170,20 +283,41 @@ function dataLayerEvaluate({ names, max }) {
     /* ignore */
   }
   for (const k of keys) {
-    if (seen.has(k) || !/layer/i.test(k)) continue;
+    if (seen.has(k) || !/layer/i.test(k) || out.length >= MAX_ENTRIES) continue;
     let v;
     try {
       v = window[k];
     } catch {
       continue;
     }
-    push(k, v);
+    if (v === null || v === undefined) continue;
+    if (typeof Node !== "undefined" && v instanceof Node) continue;
+    let callable = false;
+    try {
+      callable = typeof v.getState === "function";
+    } catch {
+      /* opaque proxy */
+    }
+    if (callable) {
+      try {
+        const s = serialise(v.getState());
+        if (s) {
+          seen.add(k);
+          out.push({ name: `${k}.getState`, value: s });
+        }
+      } catch {
+        /* ignore */
+      }
+      continue;
+    }
+    if (typeof v !== "object" || v.nodeType) continue;
+    push(k, v, true);
   }
 
   return out;
 }
 
-const DATA_LAYER_NAMES = ["dataLayer", "adobeDataLayer", "digitalData", "utag_data", "_paq"];
+const DATA_LAYER_NAMES = ["dataLayer", "adobeDataLayer", "digitalData", "utag_data", "_paq", "_mtm"];
 // Per-entry JSON cap; guards the stdio protocol against pathological content.
 const DATA_LAYER_MAX_JSON = 1024 * 1024;
 
