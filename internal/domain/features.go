@@ -8,18 +8,18 @@ import (
 // Schedule is a cron-driven scan definition owned by a project. It keeps the
 // scan knobs inline so a schedule can be created before a Scan exists.
 type Schedule struct {
-	ID        ID         `json:"id"`
-	ProjectID ID         `json:"projectId"`
-	ScanID    ID         `json:"scanId,omitempty"`
-	Name      string     `json:"name"`
-	URL       string     `json:"url"`
-	Cron      string     `json:"cron"`
-	Timezone  string     `json:"timezone"`
-	Enabled   bool       `json:"enabled"`
-	MaxPages  int        `json:"maxPages"`
-	MaxDepth  int        `json:"maxDepth"`
-	Consent   string     `json:"consent"`
-	Owner     string     `json:"owner"`
+	ID        ID     `json:"id"`
+	ProjectID ID     `json:"projectId"`
+	ScanID    ID     `json:"scanId,omitempty"`
+	Name      string `json:"name"`
+	URL       string `json:"url"`
+	Cron      string `json:"cron"`
+	Timezone  string `json:"timezone"`
+	Enabled   bool   `json:"enabled"`
+	MaxPages  int    `json:"maxPages"`
+	MaxDepth  int    `json:"maxDepth"`
+	Consent   string `json:"consent"`
+	Owner     string `json:"owner"`
 
 	LastRunID  ID         `json:"lastRunId,omitempty"`
 	LastStatus RunStatus  `json:"lastStatus,omitempty"`
@@ -174,21 +174,21 @@ type Report struct {
 
 // ReportSchedule is a cron-driven report generation job.
 type ReportSchedule struct {
-	ID          ID          `json:"id"`
-	ProjectID   ID          `json:"projectId"`
-	TemplateID  string      `json:"templateId"`
-	Name        string      `json:"name"`
-	Cadence     string      `json:"cadence"`
-	Cron        string      `json:"cron"`
-	Timezone    string      `json:"timezone"`
-	Recipients  []string    `json:"recipients"`
-	Scope       ReportScope `json:"scope"`
-	Format      string      `json:"format"`
-	Enabled     bool        `json:"enabled"`
-	NextRunAt   *time.Time  `json:"nextRunAt,omitempty"`
-	LastRunAt   *time.Time  `json:"lastRunAt,omitempty"`
-	CreatedAt   time.Time   `json:"createdAt"`
-	UpdatedAt   time.Time   `json:"updatedAt"`
+	ID         ID          `json:"id"`
+	ProjectID  ID          `json:"projectId"`
+	TemplateID string      `json:"templateId"`
+	Name       string      `json:"name"`
+	Cadence    string      `json:"cadence"`
+	Cron       string      `json:"cron"`
+	Timezone   string      `json:"timezone"`
+	Recipients []string    `json:"recipients"`
+	Scope      ReportScope `json:"scope"`
+	Format     string      `json:"format"`
+	Enabled    bool        `json:"enabled"`
+	NextRunAt  *time.Time  `json:"nextRunAt,omitempty"`
+	LastRunAt  *time.Time  `json:"lastRunAt,omitempty"`
+	CreatedAt  time.Time   `json:"createdAt"`
+	UpdatedAt  time.Time   `json:"updatedAt"`
 }
 
 // InventoryTag is an aggregated tag observed across a run.

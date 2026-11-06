@@ -65,15 +65,23 @@ func (s *Server) scope(next http.Handler) http.Handler {
 	})
 }
 
-// bearerKey resolves the Authorization header into a valid API key.
+// bearerKey resolves the Authorization header into a valid API key. EventSource
+// and WebSocket clients cannot set headers, so the streaming endpoints also
+// accept the key as an api_key query parameter.
 func (s *Server) bearerKey(r *http.Request) (*domain.APIKey, error) {
+	var token string
 	header := strings.TrimSpace(r.Header.Get("Authorization"))
-	if header == "" {
-		return nil, errors.New("valid API key required (Authorization: Bearer pg_…)")
+	if header != "" {
+		var ok bool
+		token, ok = strings.CutPrefix(header, "Bearer ")
+		if !ok || len(token) < 4 {
+			return nil, errors.New("authorization header must carry a bearer token")
+		}
+	} else if isStreamingPath(r.URL.Path) {
+		token = strings.TrimSpace(r.URL.Query().Get("api_key"))
 	}
-	token, ok := strings.CutPrefix(header, "Bearer ")
-	if !ok || len(token) < 4 {
-		return nil, errors.New("authorization header must carry a bearer token")
+	if token == "" {
+		return nil, errors.New("valid API key required (Authorization: Bearer pg_…)")
 	}
 	if !strings.HasPrefix(token, "pg_") {
 		return nil, errors.New("API key must start with pg_")
@@ -86,6 +94,10 @@ func (s *Server) bearerKey(r *http.Request) (*domain.APIKey, error) {
 		return nil, errors.New("API key is disabled or expired")
 	}
 	return key, nil
+}
+
+func isStreamingPath(path string) bool {
+	return strings.HasSuffix(path, "/events") || strings.HasSuffix(path, "/stream")
 }
 
 func isWrite(method string) bool {

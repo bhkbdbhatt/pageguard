@@ -107,7 +107,28 @@ func TestEndToEndScanLifecycle(t *testing.T) {
 	}
 	getJSON(t, apiSrv.URL+"/api/v1/runs/"+run.ID.String()+"/findings?minSeverity=high", &findResp)
 	if !hasRule(findResp.Findings, "core/http-error-status") {
-		t.Errorf("expected http-error-status finding, got %+v", findResp.Findings)
+		t.Fatalf("expected http-error-status finding, got %+v", findResp.Findings)
+	}
+	if len(findResp.Findings) == 0 {
+		t.Fatal("expected at least one finding")
+	}
+
+	var updated domain.Finding
+	patchJSON(t, apiSrv.URL+"/api/v1/findings/"+findResp.Findings[0].ID.String(), map[string]any{
+		"status": "acknowledged",
+		"owner":  "web-platform",
+		"note":   "ticket PG-1",
+	}, &updated)
+	if updated.Status != domain.FindingAcknowledged || updated.Owner != "web-platform" {
+		t.Fatalf("finding triage = %+v", updated)
+	}
+
+	var ackResp struct {
+		Findings []domain.Finding `json:"findings"`
+	}
+	getJSON(t, apiSrv.URL+"/api/v1/runs/"+run.ID.String()+"/findings?status=acknowledged", &ackResp)
+	if len(ackResp.Findings) != 1 || ackResp.Findings[0].ID != updated.ID {
+		t.Fatalf("status filter = %+v", ackResp.Findings)
 	}
 }
 

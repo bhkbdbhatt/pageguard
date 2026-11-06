@@ -11,7 +11,9 @@ import {
   listScanResults,
   resumeRun,
   runEventStreamURL,
+  updateFinding,
   type Finding,
+  type FindingStatus,
   type Page,
   type Run,
   type RunStatus,
@@ -37,6 +39,15 @@ const STATUS_CLASS: Record<RunStatus, string> = {
 };
 
 const TERMINAL = new Set<RunStatus>(["succeeded", "failed", "canceled"]);
+
+const FINDING_STATUSES: FindingStatus[] = ["open", "acknowledged", "in_progress", "resolved", "ignored"];
+const FINDING_STATUS_CLASS: Record<FindingStatus, string> = {
+  open: "bg-red-50 text-red-700",
+  acknowledged: "bg-amber-50 text-amber-700",
+  in_progress: "bg-sky-50 text-sky-700",
+  resolved: "bg-emerald-50 text-emerald-700",
+  ignored: "bg-slate-100 text-slate-500",
+};
 
 function StatusBadge({ status }: { status: RunStatus }) {
   return (
@@ -75,15 +86,29 @@ function EvidencePanel({
   pageKey,
   finding,
   onClose,
+  onUpdated,
 }: {
   runId: string;
   pageKey: string;
   finding?: Finding | null;
   onClose: () => void;
+  onUpdated: (finding: Finding) => void;
 }) {
   const [result, setResult] = useState<ScanResult | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [status, setStatus] = useState<FindingStatus>(finding?.status ?? "open");
+  const [owner, setOwner] = useState(finding?.owner ?? "");
+  const [note, setNote] = useState(finding?.note ?? "");
+  const [triageBusy, setTriageBusy] = useState(false);
+  const [triageError, setTriageError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setStatus(finding?.status ?? "open");
+    setOwner(finding?.owner ?? "");
+    setNote(finding?.note ?? "");
+    setTriageError(null);
+  }, [finding]);
 
   useEffect(() => {
     let cancelled = false;
@@ -111,6 +136,20 @@ function EvidencePanel({
   const cookies = result?.cookies ?? [];
   const consoleMsgs = result?.console ?? [];
 
+  async function saveTriage() {
+    if (!finding) return;
+    setTriageBusy(true);
+    setTriageError(null);
+    try {
+      const updated = await updateFinding(finding.id, { status, owner, note });
+      onUpdated(updated);
+    } catch (e) {
+      setTriageError((e as Error).message);
+    } finally {
+      setTriageBusy(false);
+    }
+  }
+
   return (
     <div className="fixed inset-0 z-40 flex justify-end">
       <div className="absolute inset-0 bg-slate-900/30" onClick={onClose} />
@@ -135,9 +174,12 @@ function EvidencePanel({
               {finding && (
                 <Section title="Finding">
                   <div className="rounded border border-slate-200 p-3">
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       <span className={`rounded px-1.5 py-0.5 text-xs font-medium ${SEVERITY_CLASS[finding.severity]}`}>
                         {finding.severity}
+                      </span>
+                      <span className={`rounded px-1.5 py-0.5 text-xs font-medium ${FINDING_STATUS_CLASS[status]}`}>
+                        {status.replace("_", " ")}
                       </span>
                       <span className="font-medium">{finding.title}</span>
                     </div>
@@ -150,6 +192,54 @@ function EvidencePanel({
                         {JSON.stringify(finding.evidence, null, 2)}
                       </pre>
                     )}
+                    <div className="mt-3 grid gap-2 border-t border-slate-100 pt-3">
+                      <label className="text-xs font-medium text-slate-500">
+                        Status
+                        <select
+                          value={status}
+                          onChange={(e) => setStatus(e.target.value as FindingStatus)}
+                          className="mt-1 w-full rounded border border-slate-300 px-2 py-1 text-sm text-slate-700"
+                        >
+                          {FINDING_STATUSES.map((s) => (
+                            <option key={s} value={s}>
+                              {s.replace("_", " ")}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <label className="text-xs font-medium text-slate-500">
+                        Owner
+                        <input
+                          value={owner}
+                          onChange={(e) => setOwner(e.target.value)}
+                          placeholder="name or email"
+                          className="mt-1 w-full rounded border border-slate-300 px-2 py-1 text-sm text-slate-700"
+                        />
+                      </label>
+                      <label className="text-xs font-medium text-slate-500">
+                        Note
+                        <textarea
+                          value={note}
+                          onChange={(e) => setNote(e.target.value)}
+                          rows={2}
+                          placeholder="fix, ticket, or verification note"
+                          className="mt-1 w-full rounded border border-slate-300 px-2 py-1 text-sm text-slate-700"
+                        />
+                      </label>
+                      {triageError && <p className="rounded bg-red-50 px-2 py-1 text-xs text-red-700">{triageError}</p>}
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-xs text-slate-400">
+                          {finding.updatedAt ? `updated ${new Date(finding.updatedAt).toLocaleString()}` : ""}
+                        </span>
+                        <button
+                          onClick={saveTriage}
+                          disabled={triageBusy}
+                          className="rounded bg-brand-600 px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50"
+                        >
+                          {triageBusy ? "Saving…" : "Save triage"}
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 </Section>
               )}
@@ -293,6 +383,7 @@ export default function RunPage() {
   const [error, setError] = useState<string | null>(null);
   const [actionBusy, setActionBusy] = useState(false);
   const [severityFilter, setSeverityFilter] = useState<Severity | "all">("all");
+  const [statusFilter, setStatusFilter] = useState<FindingStatus | "all">("all");
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<{ key: string; finding: Finding | null } | null>(null);
 
@@ -383,6 +474,11 @@ export default function RunPage() {
     }
   }
 
+  function onFindingUpdated(updated: Finding) {
+    setSelected((prev) => (prev ? { ...prev, finding: updated } : prev));
+    refresh();
+  }
+
   // Map a page's final URL back to its checkpoint key (the original URL) so
   // findings (which record the final URL) resolve to the right ScanResult.
   const urlKey = useMemo(() => {
@@ -403,12 +499,13 @@ export default function RunPage() {
     const q = query.trim().toLowerCase();
     return findings.filter((f) => {
       if (severityFilter !== "all" && f.severity !== severityFilter) return false;
+      if (statusFilter !== "all" && f.status !== statusFilter) return false;
       if (!q) return true;
-      return [f.title, f.ruleId, f.pluginId, f.pageUrl, f.description]
+      return [f.title, f.ruleId, f.pluginId, f.pageUrl, f.description, f.owner, f.note]
         .filter(Boolean)
         .some((v) => String(v).toLowerCase().includes(q));
     });
-  }, [findings, severityFilter, query]);
+  }, [findings, severityFilter, statusFilter, query]);
 
   const discovered = run?.stats.pagesDiscovered ?? 0;
   const done = run ? run.stats.pagesScanned + run.stats.pagesFailed : 0;
@@ -499,15 +596,29 @@ export default function RunPage() {
 
       <div className="grid gap-6 lg:grid-cols-2">
         <section className="overflow-hidden rounded-lg border border-slate-200 bg-white">
-          <div className="flex items-center justify-between gap-2 border-b border-slate-100 px-4 py-2">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 px-4 py-2">
             <h2 className="text-sm font-semibold">Findings</h2>
-            <input
-              type="search"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search findings…"
-              className="w-40 rounded border border-slate-300 px-2 py-1 text-xs sm:w-52"
-            />
+            <div className="flex items-center gap-2">
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value as FindingStatus | "all")}
+                className="rounded border border-slate-300 px-2 py-1 text-xs"
+              >
+                <option value="all">all statuses</option>
+                {FINDING_STATUSES.map((s) => (
+                  <option key={s} value={s}>
+                    {s.replace("_", " ")}
+                  </option>
+                ))}
+              </select>
+              <input
+                type="search"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search findings."
+                className="w-40 rounded border border-slate-300 px-2 py-1 text-xs sm:w-52"
+              />
+            </div>
           </div>
           <ul className="max-h-96 divide-y divide-slate-100 overflow-auto text-sm">
             {filteredFindings.length === 0 && (
@@ -521,12 +632,17 @@ export default function RunPage() {
                   onClick={() => setSelected({ key: urlKey.get(f.pageUrl) ?? f.pageUrl, finding: f })}
                   className="w-full px-4 py-2 text-left hover:bg-slate-50"
                 >
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <span className={`rounded px-1.5 py-0.5 text-xs ${SEVERITY_CLASS[f.severity]}`}>{f.severity}</span>
+                    <span className={`rounded px-1.5 py-0.5 text-xs ${FINDING_STATUS_CLASS[f.status ?? "open"]}`}>
+                      {(f.status ?? "open").replace("_", " ")}
+                    </span>
                     <span className="font-medium">{f.title}</span>
                   </div>
-                  <div className="mt-0.5 text-xs text-slate-500">
-                    <code>{f.ruleId}</code> · {f.pageUrl}
+                  <div className="mt-0.5 flex flex-wrap gap-x-2 text-xs text-slate-500">
+                    <code>{f.ruleId}</code>
+                    <span>· {f.pageUrl}</span>
+                    {f.owner && <span>· {f.owner}</span>}
                   </div>
                 </button>
               </li>
@@ -575,7 +691,13 @@ export default function RunPage() {
       )}
 
       {selected && (
-        <EvidencePanel runId={runId} pageKey={selected.key} finding={selected.finding} onClose={() => setSelected(null)} />
+        <EvidencePanel
+          runId={runId}
+          pageKey={selected.key}
+          finding={selected.finding}
+          onClose={() => setSelected(null)}
+          onUpdated={onFindingUpdated}
+        />
       )}
     </div>
   );

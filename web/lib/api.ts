@@ -1,5 +1,19 @@
 export const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:8080";
 
+const API_KEY_STORAGE = "pageguard.apiKey";
+
+export function getAPIKey(): string {
+  if (typeof window === "undefined") return "";
+  return window.localStorage.getItem(API_KEY_STORAGE) ?? "";
+}
+
+export function setAPIKey(key: string): void {
+  if (typeof window === "undefined") return;
+  const trimmed = key.trim();
+  if (trimmed) window.localStorage.setItem(API_KEY_STORAGE, trimmed);
+  else window.localStorage.removeItem(API_KEY_STORAGE);
+}
+
 export interface Project {
   id: string;
   name: string;
@@ -71,6 +85,7 @@ export interface Page {
 
 
 export type Severity = "info" | "low" | "medium" | "high" | "critical";
+export type FindingStatus = "open" | "acknowledged" | "in_progress" | "resolved" | "ignored";
 
 export interface Finding {
   id: string;
@@ -81,6 +96,10 @@ export interface Finding {
   description: string;
   pageUrl: string;
   evidence?: Record<string, unknown>;
+  status: FindingStatus;
+  owner?: string;
+  note?: string;
+  updatedAt?: string;
 }
 
 export interface NetworkRequest {
@@ -160,6 +179,8 @@ export interface ScanResult {
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const headers: Record<string, string> = { ...((init?.headers as Record<string, string> | undefined) ?? {}) };
+  const apiKey = getAPIKey();
+  if (apiKey) headers.Authorization = `Bearer ${apiKey}`;
   if (init?.body !== undefined && !headers["Content-Type"]) {
     headers["Content-Type"] = "application/json";
   }
@@ -245,12 +266,28 @@ export async function listFindings(runId: string, minSeverity?: string): Promise
   return (await request<{ findings: Finding[] }>(`/api/v1/runs/${runId}/findings${qs}`)).findings ?? [];
 }
 
+export async function updateFinding(
+  id: string,
+  patch: { status?: FindingStatus; owner?: string; note?: string },
+): Promise<Finding> {
+  return request<Finding>(`/api/v1/findings/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(patch),
+  });
+}
+
+function withAPIKey(url: string): string {
+  const apiKey = getAPIKey();
+  if (!apiKey) return url;
+  return `${url}${url.includes("?") ? "&" : "?"}api_key=${encodeURIComponent(apiKey)}`;
+}
+
 export function runEventStreamURL(runId: string): string {
-  return `${API_BASE}/api/v1/runs/${runId}/events`;
+  return withAPIKey(`${API_BASE}/api/v1/runs/${runId}/events`);
 }
 
 export function runWebSocketURL(runId: string): string {
-  return API_BASE.replace(/^http/, "ws") + `/api/v1/runs/${runId}/stream`;
+  return withAPIKey(API_BASE.replace(/^http/, "ws") + `/api/v1/runs/${runId}/stream`);
 }
 
 export type RuleTarget = "request" | "event" | "tag" | "cookie" | "beacon" | "datalayer" | "consent" | "page" | "script" | "network" | "any";

@@ -529,19 +529,60 @@ func (s *Store) SaveFinding(ctx context.Context, f *domain.Finding) error {
 	if !f.PageID.IsEmpty() {
 		pageID = toUUID(f.PageID)
 	}
+	status := f.Status
+	if status == "" {
+		status = domain.FindingOpen
+	}
+	updatedAt := f.UpdatedAt
+	if updatedAt.IsZero() {
+		updatedAt = time.Now().UTC()
+	}
 	_, err = s.pool.Exec(ctx, `
-		INSERT INTO findings (id, run_id, page_id, page_url, plugin_id, rule_id, severity, title, description, evidence, created_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+		INSERT INTO findings (id, run_id, page_id, page_url, plugin_id, rule_id, severity, title, description, evidence, status, owner, note, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
 		ON CONFLICT (id) DO NOTHING`,
 		toUUID(f.ID), toUUID(f.RunID), pageID, f.PageURL, f.PluginID, f.RuleID,
-		string(f.Severity), f.Title, nullString(f.Description), ev, f.CreatedAt)
+		string(f.Severity), f.Title, nullString(f.Description), ev,
+		string(status), f.Owner, f.Note, f.CreatedAt, updatedAt)
 	return err
+}
+
+func (s *Store) GetFinding(ctx context.Context, id domain.ID) (*domain.Finding, error) {
+	return s.scanFinding(s.pool.QueryRow(ctx, `
+		SELECT id::text, run_id::text, COALESCE(page_id::text, ''), COALESCE(page_url, ''),
+		       plugin_id, rule_id, severity, title, description, evidence,
+		       status, owner, note, created_at, updated_at
+		  FROM findings WHERE id = $1`, toUUID(id)))
+}
+
+func (s *Store) UpdateFinding(ctx context.Context, f *domain.Finding) error {
+	status := f.Status
+	if status == "" {
+		status = domain.FindingOpen
+	}
+	updatedAt := f.UpdatedAt
+	if updatedAt.IsZero() {
+		updatedAt = time.Now().UTC()
+	}
+	tag, err := s.pool.Exec(ctx, `
+		UPDATE findings
+		   SET status = $2, owner = $3, note = $4, updated_at = $5
+		 WHERE id = $1`,
+		toUUID(f.ID), string(status), f.Owner, f.Note, updatedAt)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return domain.ErrNotFound
+	}
+	return nil
 }
 
 func (s *Store) ListFindings(ctx context.Context, f domain.FindingFilter) ([]*domain.Finding, error) {
 	q := `
 		SELECT id::text, run_id::text, COALESCE(page_id::text, ''), COALESCE(page_url, ''),
-		       plugin_id, rule_id, severity, title, description, evidence, created_at
+		       plugin_id, rule_id, severity, title, description, evidence,
+		       status, owner, note, created_at, updated_at
 		  FROM findings WHERE 1=1`
 	args := []any{}
 	if f.RunID != "" {
@@ -562,6 +603,14 @@ func (s *Store) ListFindings(ctx context.Context, f domain.FindingFilter) ([]*do
 		args = append(args, f.PluginID)
 		q += fmt.Sprintf(` AND plugin_id = $%d`, len(args))
 	}
+	if f.Status != "" {
+		args = append(args, string(f.Status))
+		q += fmt.Sprintf(` AND status = $%d`, len(args))
+	}
+	if f.Owner != "" {
+		args = append(args, f.Owner)
+		q += fmt.Sprintf(` AND owner = $%d`, len(args))
+	}
 	q += ` ORDER BY ` + fmt.Sprintf(severityRankSQL, "severity") + ` DESC, created_at`
 	if f.Limit > 0 {
 		q += fmt.Sprintf(` LIMIT %d`, f.Limit)
@@ -573,26 +622,38 @@ func (s *Store) ListFindings(ctx context.Context, f domain.FindingFilter) ([]*do
 	defer rows.Close()
 	out := []*domain.Finding{}
 	for rows.Next() {
-		var (
-			fid, rid, pid string
-			ev            []byte
-			desc          *string
-			fo            domain.Finding
-		)
-		if err := rows.Scan(&fid, &rid, &pid, &fo.PageURL, &fo.PluginID, &fo.RuleID,
-			&fo.Severity, &fo.Title, &desc, &ev, &fo.CreatedAt); err != nil {
+		fo, err := s.scanFinding(rows)
+		if err != nil {
 			return nil, err
 		}
-		fo.ID = toID(fid)
-		fo.RunID = toID(rid)
-		if pid != "" {
-			fo.PageID = toID(pid)
-		}
-		assignStr(&fo.Description, desc)
-		unmarshalInto(ev, &fo.Evidence)
-		out = append(out, &fo)
+		out = append(out, fo)
 	}
 	return out, rows.Err()
+}
+
+func (s *Store) scanFinding(row pgx.Row) (*domain.Finding, error) {
+	var (
+		fid, rid, pid string
+		ev            []byte
+		desc          *string
+		fo            domain.Finding
+	)
+	if err := row.Scan(&fid, &rid, &pid, &fo.PageURL, &fo.PluginID, &fo.RuleID,
+		&fo.Severity, &fo.Title, &desc, &ev, &fo.Status, &fo.Owner, &fo.Note,
+		&fo.CreatedAt, &fo.UpdatedAt); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, domain.ErrNotFound
+		}
+		return nil, err
+	}
+	fo.ID = toID(fid)
+	fo.RunID = toID(rid)
+	if pid != "" {
+		fo.PageID = toID(pid)
+	}
+	assignStr(&fo.Description, desc)
+	unmarshalInto(ev, &fo.Evidence)
+	return &fo, nil
 }
 
 // ---- audit rules ---------------------------------------------------------

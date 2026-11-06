@@ -5,22 +5,28 @@ sites, executes their client-side tags in a real browser, and validates what it
 finds against a plugin-based rule engine — so you can prove that every page
 loads the tags it should, stores only the cookies it should, and respects the
 privacy promises you make.
-[text](demo.webm)
+
 > Formerly scoped as "OpenObserve". Renamed to avoid collision with the
 > existing OpenObserve observability project.
+
+> **Project status: pre-1.0.** The audit engine, findings workflow, alerts, and
+> dashboard work today. Hosted signup, billing, per-user login, and an SLA do
+> not. See [Production readiness](#production-readiness) before deploying this
+> for a customer.
 
 ## What works today
 
 [![Netlify Status](https://api.netlify.com/api/v1/badges/df0d5f9c-5322-4b72-9cbe-fa3c9a0c589e/deploy-status)](https://app.netlify.com/projects/pageguardone/deploys)
 
-This repository contains the **foundation** plus a complete, tested
-**Module 1 (Page Scanning)** implementation.
+This repository contains a working scan engine, tag and privacy validation,
+scheduled audits, alerting, reports, and a Next.js dashboard. Tests cover the
+core paths without requiring PostgreSQL or a browser.
 
 | Area | Status |
 | --- | --- |
 | Go scan orchestrator (BFS crawler, worker pool, robots.txt) | ✅ implemented + tested |
 | HTTP fetcher + headless-browser renderer abstraction (Playwright worker) | ✅ implemented |
-| HTML/link/meta analysis, SPA detection, starter tag detector | ✅ implemented |
+| HTML/link/meta analysis, SPA detection, 65 built-in tag signatures | ✅ implemented |
 | Plugin host: declarative rule engine + out-of-process Node/TS validators | ✅ implemented + tested |
 | TypeScript Plugin SDK | ✅ implemented |
 | REST API + SSE + WebSocket progress streams | ✅ implemented + tested |
@@ -29,9 +35,28 @@ This repository contains the **foundation** plus a complete, tested
 | Tag validation engine (`internal/tagpolicy`, YAML/JSON policies → pass/fail report) | ✅ implemented + tested |
 | Journey engine (`internal/journey`, scripted multi-step flows → step report) | ✅ implemented + tested |
 | Privacy compliance engine (`internal/privacy`, consent-state simulation → per-regulation report) | ✅ implemented + tested |
-| Next.js + Tailwind dashboard | ✅ scans, run controls, live progress, sitemap tree, findings filter/search, evidence drawer |
+| Next.js + Tailwind dashboard | ✅ scans, run controls, live progress, sitemap tree, findings filter/search, evidence drawer, finding triage |
+| API-key authentication + project scoping | ✅ implemented; enable with `PAGEGUARD_AUTH=true` |
+| Scheduled audits, alert rules, incidents, delivery history | ✅ implemented; webhook, Slack, PagerDuty, and webhook-backed email |
+| Reports (JSON/CSV/HTML) | ✅ implemented |
 | Dockerfile, docker-compose, Helm chart | ✅ provided |
-| Alerting (§5) | 🚧 design in `docs/roadmap.md` |
+| Hosted signup, billing, per-user login, SSO/SCIM, PDF export | ❌ not implemented |
+
+### Production readiness
+
+Pageguard is usable for self-hosted evaluation and internal audits today. Before
+putting it in front of a customer:
+
+- enable API-key auth and create a scoped key per project;
+- put the API behind TLS and restrict CORS to the dashboard origin;
+- run PostgreSQL with backups instead of the in-memory store;
+- add alert channels you actually monitor and test them;
+- treat the built-in tag signatures as a starter catalogue, not a complete
+  fingerprint database.
+
+The dashboard is not a multi-tenant SaaS control plane. Projects, scans, rules,
+and API keys are shared at the API level, with project scoping enforced for
+scoped keys.
 
 ## Repository layout
 
@@ -76,6 +101,24 @@ go run ./cmd/pageguard --addr :8080 --plugins ./plugins
 curl -s localhost:8080/api/v1/projects -H 'content-type: application/json' \
   -d '{"name":"Acme"}'
 ```
+
+### Authentication
+
+Authentication is off by default for local evaluation. For shared deployments,
+set `PAGEGUARD_AUTH=true` and supply an initial admin key:
+
+```bash
+PAGEGUARD_AUTH=true \
+PAGEGUARD_ADMIN_KEY='pg_replace-with-64-hex-characters' \
+  go run ./cmd/pageguard --plugins ./plugins
+
+curl -s localhost:8080/api/v1/projects \
+  -H "Authorization: Bearer $PAGEGUARD_ADMIN_KEY"
+```
+
+The bootstrap key is created on first startup and left unchanged afterwards.
+Create project-scoped reader/writer keys through `/api/v1/api-keys`, then rotate
+or remove the bootstrap key.
 
 ### PostgreSQL
 

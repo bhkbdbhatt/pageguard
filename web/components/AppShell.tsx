@@ -6,8 +6,10 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState } 
 import {
   createAudit,
   createProject,
+  getAPIKey,
   getHealth,
   listProjects,
+  setAPIKey,
   type Project,
 } from "../lib/api";
 import SpotlightTour, { hasSeenTour, rememberTour, TOUR_STEPS } from "./Tour";
@@ -72,6 +74,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const [auditOpen, setAuditOpen] = useState(false);
   const [auditPrefill, setAuditPrefill] = useState<AuditPrefill>();
   const [projectOpen, setProjectOpen] = useState(false);
+  const [apiKeyOpen, setAPIKeyOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [tourOpen, setTourOpen] = useState(false);
 
@@ -232,6 +235,14 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                   Project
                 </button>
                 <button
+                  onClick={() => setAPIKeyOpen(true)}
+                  className="btn h-9 w-9 px-0"
+                  title="Set API key"
+                  aria-label="Set API key"
+                >
+                  <Icon name="key" className="h-4 w-4" />
+                </button>
+                <button
                   onClick={() => setTourOpen(true)}
                   className="btn h-9 w-9 px-0"
                   title="Replay product tour"
@@ -287,6 +298,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         }}
         onRefresh={refreshProjects}
       />
+      <APIKeyModal open={apiKeyOpen} onClose={() => setAPIKeyOpen(false)} />
       <SpotlightTour
         open={tourOpen}
         steps={TOUR_STEPS}
@@ -303,6 +315,65 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         </div>
       )}
     </AppContext.Provider>
+  );
+}
+
+function APIKeyModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const [key, setKey] = useState("");
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (open) {
+      setKey(getAPIKey());
+      setError(null);
+    }
+  }, [open]);
+
+  const save = (event: React.FormEvent) => {
+    event.preventDefault();
+    const trimmed = key.trim();
+    if (trimmed && !trimmed.startsWith("pg_")) {
+      setError("API keys start with pg_.");
+      return;
+    }
+    setAPIKey(trimmed);
+    window.location.reload();
+  };
+
+  return (
+    <Modal
+      open={open}
+      onClose={onClose}
+      title="API key"
+      subtitle="Required when the backend runs with PAGEGUARD_AUTH=true."
+      width="max-w-md"
+    >
+      <form onSubmit={save} className="space-y-4">
+        <div>
+          <label className="label">Bearer token</label>
+          <input
+            className="input mono"
+            type="password"
+            autoComplete="off"
+            placeholder="pg_..."
+            value={key}
+            onChange={(event) => setKey(event.target.value)}
+          />
+          <p className="mt-2 text-[11px] text-slate-500">
+            Stored in this browser only. Leave empty to clear it.
+          </p>
+        </div>
+        {error && <p className="text-xs text-rose-300">{error}</p>}
+        <div className="flex justify-end gap-2">
+          <button type="button" className="btn" onClick={onClose}>
+            Cancel
+          </button>
+          <button type="submit" className="btn-primary">
+            Save key
+          </button>
+        </div>
+      </form>
+    </Modal>
   );
 }
 

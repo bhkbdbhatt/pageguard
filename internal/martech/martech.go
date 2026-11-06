@@ -40,6 +40,111 @@ var Vendors = []Vendor{
 		Hosts:    []string{"onetrust.com", "cookielaw.org", "optanon.blob.core.windows.net"},
 		TagHints: []string{"onetrust", "optanon", "cookielaw"},
 	},
+	{
+		Key: "tiktok", Display: "TikTok",
+		Hosts:    []string{"analytics.tiktok.com", "tiktok.com"},
+		TagHints: []string{"tiktok", "ttq"},
+	},
+	{
+		Key: "linkedin", Display: "LinkedIn",
+		Hosts:    []string{"snap.licdn.com", "px.ads.linkedin.com", "licdn.com"},
+		TagHints: []string{"linkedin", "licdn"},
+	},
+	{
+		Key: "pinterest", Display: "Pinterest",
+		Hosts:    []string{"ct.pinterest.com", "pinterest.com"},
+		TagHints: []string{"pinterest", "pintrk"},
+	},
+	{
+		Key: "snap", Display: "Snap",
+		Hosts:    []string{"sc-static.net", "tr.snapchat.com", "snapchat.com"},
+		TagHints: []string{"snapchat", "snaptr"},
+	},
+	{
+		Key: "x", Display: "X",
+		Hosts:    []string{"static.ads-twitter.com", "analytics.twitter.com", "twitter.com", "x.com"},
+		TagHints: []string{"twitter", "twq"},
+	},
+	{
+		Key: "amazon", Display: "Amazon",
+		Hosts:    []string{"amazon-adsystem.com", "assoc-amazon.com"},
+		TagHints: []string{"amazon-adsystem", "amazon"},
+	},
+	{
+		Key: "criteo", Display: "Criteo",
+		Hosts:    []string{"criteo.com", "criteo.net"},
+		TagHints: []string{"criteo"},
+	},
+	{
+		Key: "taboola", Display: "Taboola",
+		Hosts:    []string{"taboola.com"},
+		TagHints: []string{"taboola"},
+	},
+	{
+		Key: "outbrain", Display: "Outbrain",
+		Hosts:    []string{"outbrain.com"},
+		TagHints: []string{"outbrain"},
+	},
+	{
+		Key: "hotjar", Display: "Hotjar",
+		Hosts:    []string{"hotjar.com", "hotjar.io"},
+		TagHints: []string{"hotjar", "_hjsettings"},
+	},
+	{
+		Key: "heap", Display: "Heap",
+		Hosts:    []string{"heap.io", "heapanalytics.com"},
+		TagHints: []string{"heap"},
+	},
+	{
+		Key: "amplitude", Display: "Amplitude",
+		Hosts:    []string{"amplitude.com"},
+		TagHints: []string{"amplitude"},
+	},
+	{
+		Key: "fullstory", Display: "FullStory",
+		Hosts:    []string{"fullstory.com", "fs.fullstory.com"},
+		TagHints: []string{"fullstory"},
+	},
+	{
+		Key: "segment", Display: "Segment",
+		Hosts:    []string{"segment.io", "segment.com", "cdn.segment.com"},
+		TagHints: []string{"segment"},
+	},
+	{
+		Key: "klaviyo", Display: "Klaviyo",
+		Hosts:    []string{"klaviyo.com", "static.klaviyo.com"},
+		TagHints: []string{"klaviyo"},
+	},
+	{
+		Key: "braze", Display: "Braze",
+		Hosts:    []string{"braze.com", "appboy.com"},
+		TagHints: []string{"braze", "appboy"},
+	},
+	{
+		Key: "mailchimp", Display: "Mailchimp",
+		Hosts:    []string{"mailchimp.com", "chimpstatic.com"},
+		TagHints: []string{"mailchimp"},
+	},
+	{
+		Key: "cookiebot", Display: "Cookiebot",
+		Hosts:    []string{"cookiebot.com", "cookiebot.eu"},
+		TagHints: []string{"cookiebot"},
+	},
+	{
+		Key: "usercentrics", Display: "Usercentrics",
+		Hosts:    []string{"usercentrics.eu", "usercentrics.com"},
+		TagHints: []string{"usercentrics"},
+	},
+	{
+		Key: "didomi", Display: "Didomi",
+		Hosts:    []string{"didomi.io"},
+		TagHints: []string{"didomi"},
+	},
+	{
+		Key: "tealium", Display: "Tealium",
+		Hosts:    []string{"tealiumiq.com", "tags.tiqcdn.com"},
+		TagHints: []string{"tealium", "utag"},
+	},
 }
 
 // DetectHost returns the display name of the vendor owning host, or "".

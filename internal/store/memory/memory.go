@@ -6,6 +6,7 @@ import (
 	"context"
 	"sort"
 	"sync"
+	"time"
 
 	"github.com/pageguard/pageguard/internal/domain"
 )
@@ -266,6 +267,38 @@ func (s *Store) SaveFinding(_ context.Context, fo *domain.Finding) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	cp := *fo
+	if cp.Status == "" {
+		cp.Status = domain.FindingOpen
+	}
+	if cp.CreatedAt.IsZero() {
+		cp.CreatedAt = time.Now().UTC()
+	}
+	cp.UpdatedAt = cp.CreatedAt
+	s.findings[fo.ID] = &cp
+	return nil
+}
+
+func (s *Store) GetFinding(_ context.Context, id domain.ID) (*domain.Finding, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	fo, ok := s.findings[id]
+	if !ok {
+		return nil, domain.ErrNotFound
+	}
+	cp := *fo
+	return &cp, nil
+}
+
+func (s *Store) UpdateFinding(_ context.Context, fo *domain.Finding) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if _, ok := s.findings[fo.ID]; !ok {
+		return domain.ErrNotFound
+	}
+	if fo.Status == "" {
+		fo.Status = domain.FindingOpen
+	}
+	cp := *fo
 	s.findings[fo.ID] = &cp
 	return nil
 }
@@ -285,6 +318,12 @@ func (s *Store) ListFindings(_ context.Context, f domain.FindingFilter) ([]*doma
 			continue
 		}
 		if f.PluginID != "" && fo.PluginID != f.PluginID {
+			continue
+		}
+		if f.Status != "" && fo.Status != f.Status {
+			continue
+		}
+		if f.Owner != "" && fo.Owner != f.Owner {
 			continue
 		}
 		cp := *fo

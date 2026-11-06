@@ -146,6 +146,42 @@ func TestDetectorRecognisesByRequestHost(t *testing.T) {
 	}
 }
 
+func TestDetectorCatalogueIsUsable(t *testing.T) {
+	if len(defaultSignatures) < 50 {
+		t.Fatalf("signature catalogue = %d, want at least 50", len(defaultSignatures))
+	}
+	seen := map[string]bool{}
+	for _, sig := range defaultSignatures {
+		if sig.ID == "" || sig.Vendor == "" || sig.Name == "" || sig.Category == "" {
+			t.Fatalf("incomplete signature: %+v", sig)
+		}
+		if seen[sig.ID] {
+			t.Fatalf("duplicate signature id %q", sig.ID)
+		}
+		seen[sig.ID] = true
+		if len(sig.Domains) == 0 && len(sig.Snippets) == 0 {
+			t.Fatalf("signature %q has no detection evidence", sig.ID)
+		}
+	}
+}
+
+func TestDetectorRecognisesEcommerceVendors(t *testing.T) {
+	d := NewDetector()
+	obs := &domain.Observation{
+		HTML: `<script src="https://static.klaviyo.com/onsite/js/klaviyo.js"></script>`,
+		Requests: []domain.NetworkRequest{
+			{URL: "https://ct.pinterest.com/v3/", Host: "ct.pinterest.com"},
+			{URL: "https://consent.cookiebot.com/uc.js", Host: "consent.cookiebot.com"},
+		},
+	}
+	tags := d.Detect(obs)
+	for _, id := range []string{"klaviyo", "pinterest-tag", "cookiebot"} {
+		if !hasTagID(tags, id) {
+			t.Errorf("expected %s, got %+v", id, tags)
+		}
+	}
+}
+
 func hasTagID(tags []domain.Tag, id string) bool {
 	for _, t := range tags {
 		if t.ID == id {

@@ -2,7 +2,7 @@
 
 Companion to `docs/high-level-design.md`. This document details packages, types,
 algorithms, persistence and concurrency. All diagram labels reflect the code in
-`D:\openobserve`.
+`pageguard/`.
 
 ## 1. Package dependency graph
 

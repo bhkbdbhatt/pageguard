@@ -64,8 +64,8 @@ Then visit `http://localhost:4173`.
 
 ## Editing
 
-- **Copy and links:** `index.html`. Repository links currently point at
-  `github.com/bhkbdbhatt/openobserve`; update them if the project moves.
+- **Copy and links:** `index.html`. Repository links point at
+  `github.com/bhkbdbhatt/pageguard`; update them if the project moves.
 - **Design:** custom properties at the top of `assets/styles.css` control color,
   spacing, and type. The palette mirrors the dashboard: slate surfaces, indigo
   primary, emerald accent.

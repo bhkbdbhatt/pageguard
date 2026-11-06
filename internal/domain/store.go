@@ -13,6 +13,10 @@ var ErrNotFound = errors.New("domain: not found")
 // resuming a run that is already in flight.
 var ErrConflict = errors.New("domain: conflict")
 
+// ErrForbidden is returned when a scoped caller requests a resource outside
+// its project.
+var ErrForbidden = errors.New("domain: forbidden")
+
 // PageFilter narrows ListPages.
 type PageFilter struct {
 	RunID      ID
@@ -26,6 +30,8 @@ type FindingFilter struct {
 	MinSeverity Severity
 	RuleID      string
 	PluginID    string
+	Status      FindingStatus
+	Owner       string
 	Limit       int
 }
 
@@ -57,6 +63,8 @@ type Store interface {
 	ListScanResults(ctx context.Context, runID ID, limit int) ([]*ScanResult, error)
 
 	SaveFinding(ctx context.Context, f *Finding) error
+	GetFinding(ctx context.Context, id ID) (*Finding, error)
+	UpdateFinding(ctx context.Context, f *Finding) error
 	ListFindings(ctx context.Context, f FindingFilter) ([]*Finding, error)
 
 	// Audit rules are project-scoped, declarative tag-governance checks.

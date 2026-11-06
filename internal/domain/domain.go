@@ -145,13 +145,13 @@ type Page struct {
 
 // Journey is a scripted, multi-step user flow used by Module 4.
 type Journey struct {
-	ID          ID              `json:"id"`
-	ProjectID   ID              `json:"projectId"`
-	Name        string          `json:"name"`
-	Description string          `json:"description,omitempty"`
-	Owner       string          `json:"owner,omitempty"`
-	BaseURL     string          `json:"baseUrl,omitempty"`
-	Enabled     bool            `json:"enabled"`
+	ID          ID     `json:"id"`
+	ProjectID   ID     `json:"projectId"`
+	Name        string `json:"name"`
+	Description string `json:"description,omitempty"`
+	Owner       string `json:"owner,omitempty"`
+	BaseURL     string `json:"baseUrl,omitempty"`
+	Enabled     bool   `json:"enabled"`
 	// Definition is the canonical journey.Journey document.
 	Definition json.RawMessage `json:"definition,omitempty"`
 	// Steps is retained for legacy records; new writes populate Definition.
@@ -172,15 +172,15 @@ type JourneyStep struct {
 
 // AlertRule describes a condition over findings/run state that triggers events.
 type AlertRule struct {
-	ID       ID     `json:"id"`
-	ProjectID ID    `json:"projectId"`
-	Name     string `json:"name"`
-	Enabled  bool   `json:"enabled"`
-	Severity Severity `json:"severity"`
+	ID        ID       `json:"id"`
+	ProjectID ID       `json:"projectId"`
+	Name      string   `json:"name"`
+	Enabled   bool     `json:"enabled"`
+	Severity  Severity `json:"severity"`
 	// Condition is the structured predicate evaluated after a run.
 	Condition AlertCondition `json:"condition"`
 	// ConditionText is a human-readable summary for the UI.
-	ConditionText string   `json:"conditionText,omitempty"`
+	ConditionText string `json:"conditionText,omitempty"`
 	// Channels is the legacy list of channel kinds (slack, email, ...).
 	Channels []string `json:"channels,omitempty"`
 	// ChannelIDs is the authoritative list of configured destinations.

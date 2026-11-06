@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"log/slog"
 	"net"
 	"net/http"
@@ -81,6 +82,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /api/v1/runs/{id}/results", s.handleListResults)
 	mux.HandleFunc("GET /api/v1/runs/{id}/result", s.handleGetResult)
 	mux.HandleFunc("GET /api/v1/runs/{id}/findings", s.handleListFindings)
+	mux.HandleFunc("PATCH /api/v1/findings/{id}", s.handleUpdateFinding)
 	mux.HandleFunc("GET /api/v1/runs/{id}/events", s.handleSSE)
 	mux.HandleFunc("GET /api/v1/runs/{id}/stream", s.handleWS)
 
@@ -423,14 +425,34 @@ func (s *Server) handleListFindings(w http.ResponseWriter, r *http.Request) {
 		MinSeverity: domain.Severity(q.Get("minSeverity")),
 		RuleID:      q.Get("ruleId"),
 		PluginID:    q.Get("pluginId"),
+		Status:      domain.FindingStatus(q.Get("status")),
+		Owner:       q.Get("owner"),
 		Limit:       parseLimit(q.Get("limit"), 500),
 	}
-	findings, err := s.svc.Store().ListFindings(r.Context(), f)
+	findings, err := s.svc.Findings(r.Context(), f)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
+		writeStoreError(w, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"findings": findings})
+}
+
+func (s *Server) handleUpdateFinding(w http.ResponseWriter, r *http.Request) {
+	var patch service.FindingPatch
+	if err := json.NewDecoder(io.LimitReader(r.Body, maxAuthBodyBytes)).Decode(&patch); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid JSON body")
+		return
+	}
+	finding, err := s.svc.UpdateFinding(r.Context(), domain.ID(r.PathValue("id")), patch)
+	if err != nil {
+		if errors.Is(err, domain.ErrNotFound) || errors.Is(err, domain.ErrForbidden) {
+			writeStoreError(w, err)
+			return
+		}
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, finding)
 }
 
 func (s *Server) handleListPlugins(w http.ResponseWriter, _ *http.Request) {
@@ -480,6 +502,10 @@ func writeStoreError(w http.ResponseWriter, err error) {
 	}
 	if errors.Is(err, domain.ErrConflict) {
 		writeError(w, http.StatusConflict, err.Error())
+		return
+	}
+	if errors.Is(err, domain.ErrForbidden) {
+		writeError(w, http.StatusForbidden, err.Error())
 		return
 	}
 	writeError(w, http.StatusInternalServerError, err.Error())

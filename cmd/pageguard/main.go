@@ -36,6 +36,8 @@ func main() {
 	proxies := flag.String("proxies", env("PAGEGUARD_PROXIES", ""), "comma-separated proxy specs, e.g. us=http://u:p@h:1,eu=http://h:2")
 	captureHAR := flag.Bool("capture-har", env("PAGEGUARD_CAPTURE_HAR", "false") == "true", "capture a HAR archive for browser-rendered pages")
 	captureDataLayer := flag.Bool("capture-datalayer", env("PAGEGUARD_CAPTURE_DATALAYER", "true") == "true", "capture client-side data layer payloads (default true)")
+	authRequired := flag.Bool("auth", env("PAGEGUARD_AUTH", "false") == "true", "require API-key authentication on /api/v1/*")
+	adminKey := flag.String("admin-key", env("PAGEGUARD_ADMIN_KEY", ""), "bootstrap admin API key (pg_...); created if missing")
 	flag.Parse()
 
 	logger := newLogger(*logLevel)
@@ -46,6 +48,10 @@ func main() {
 
 	store, closeStore := openStore(ctx, *databaseURL, *migrationsDir, *migrate, logger)
 	defer closeStore()
+	bootstrapAdminKey(ctx, store, *adminKey, logger)
+	if *authRequired && strings.TrimSpace(*adminKey) == "" {
+		logger.Warn("auth enabled without a bootstrap admin key; use PAGEGUARD_ADMIN_KEY or an existing key")
+	}
 	hub := events.NewHub()
 
 	registry := plugin.NewRegistry()
@@ -85,8 +91,11 @@ func main() {
 
 	server := &http.Server{
 		Addr:              *addr,
-		Handler:           api.NewServer(svc, registry, logger).Handler(),
+		Handler:           api.NewServer(svc, registry, logger, api.WithAuth(*authRequired)).Handler(),
 		ReadHeaderTimeout: 10 * time.Second,
+	}
+	if *authRequired {
+		logger.Info("API-key authentication enabled")
 	}
 
 	go func() {
@@ -108,6 +117,38 @@ func main() {
 	if renderer != nil {
 		_ = renderer.Close()
 	}
+}
+
+// bootstrapAdminKey creates an unrestricted admin API key from a deployment
+// secret when one does not already exist.
+func bootstrapAdminKey(ctx context.Context, store domain.Store, secret string, logger *slog.Logger) {
+	secret = strings.TrimSpace(secret)
+	if secret == "" {
+		return
+	}
+	if !strings.HasPrefix(secret, "pg_") || len(secret) < 11 {
+		logger.Error("bootstrap admin key must start with pg_ and contain at least 11 characters")
+		return
+	}
+	hash := domain.HashAPIKey(secret)
+	if _, err := store.GetAPIKeyByHash(ctx, hash); err == nil {
+		logger.Info("bootstrap admin key already present")
+		return
+	}
+	key := &domain.APIKey{
+		ID:        domain.NewID(),
+		Name:      "bootstrap admin",
+		Prefix:    secret[:11],
+		KeyHash:   hash,
+		Roles:     []string{domain.RoleAdmin},
+		Enabled:   true,
+		CreatedAt: time.Now().UTC(),
+	}
+	if err := store.CreateAPIKey(ctx, key); err != nil {
+		logger.Error("failed to create bootstrap admin key", "err", err)
+		return
+	}
+	logger.Info("bootstrap admin key created", "prefix", key.Prefix)
 }
 
 // openStore returns the configured store and a cleanup function. With no

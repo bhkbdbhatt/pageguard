@@ -47,6 +47,36 @@ type Tag struct {
 	Confidence float64     `json:"confidence"` // 0..1
 }
 
+// FindingStatus is the triage state of a finding.
+type FindingStatus string
+
+const (
+	FindingOpen         FindingStatus = "open"
+	FindingAcknowledged FindingStatus = "acknowledged"
+	FindingInProgress   FindingStatus = "in_progress"
+	FindingResolved     FindingStatus = "resolved"
+	FindingIgnored      FindingStatus = "ignored"
+)
+
+// FindingStatuses is the canonical set of triage states.
+var FindingStatuses = []FindingStatus{
+	FindingOpen,
+	FindingAcknowledged,
+	FindingInProgress,
+	FindingResolved,
+	FindingIgnored,
+}
+
+// ValidFindingStatus reports whether status is a known triage state.
+func ValidFindingStatus(status FindingStatus) bool {
+	for _, s := range FindingStatuses {
+		if s == status {
+			return true
+		}
+	}
+	return false
+}
+
 // Finding is a single rule violation or observation produced by a validator.
 type Finding struct {
 	ID          ID             `json:"id"`
@@ -59,7 +89,11 @@ type Finding struct {
 	Title       string         `json:"title"`
 	Description string         `json:"description"`
 	Evidence    map[string]any `json:"evidence,omitempty"`
+	Status      FindingStatus  `json:"status"`
+	Owner       string         `json:"owner,omitempty"`
+	Note        string         `json:"note,omitempty"`
 	CreatedAt   time.Time      `json:"createdAt"`
+	UpdatedAt   time.Time      `json:"updatedAt"`
 }
 
 // ConsoleMessage captures a browser console entry (browser-rendered scans).
