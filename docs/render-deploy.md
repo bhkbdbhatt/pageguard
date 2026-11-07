@@ -147,6 +147,10 @@ unless `NEXT_PUBLIC_API_BASE` changes.
 The Docker image installs Chromium through Playwright. It is large and
 memory-hungry:
 
+- Browsers are installed to `/ms-playwright` via
+  `PLAYWRIGHT_BROWSERS_PATH`. Keep that variable set at runtime: the image
+  builds as root but runs as `node`, so the default per-user cache path is not
+  shared between build and runtime.
 - Browser-rendered scans need roughly 1–2 GB of RAM. The free plan may be too
   small; use a paid instance if scans fail with browser or memory errors.
 - If you only need HTTP scanning, remove `PAGEGUARD_BROWSER_CMD` and create scans
@@ -174,5 +178,6 @@ memory-hungry:
 | Database SSL or connection errors | Use the internal connection string from the same region. For external connections, append `?sslmode=require`. |
 | Dashboard shows CORS errors | `PAGEGUARD_CORS_ORIGINS` must exactly match the browser origin (scheme and host, no trailing slash). Restart after changing it. |
 | Browser scans fail with out-of-memory or timeouts | Increase the instance memory or switch scans to `"renderMode": "http"`. |
+| Browser scans fail with `Executable doesn't exist at .../ms-playwright/...` | The image is running with a different browser cache path than it built with. Keep `PLAYWRIGHT_BROWSERS_PATH=/ms-playwright` at runtime and rebuild the service. |
 | WebSocket/SSE progress does not update | The browser connects directly to the Render API URL, not through Netlify. Confirm `NEXT_PUBLIC_API_BASE` points to Render and that the Netlify site was rebuilt. |
 | First request after idle is slow | Free services spin down; upgrade or keep the service warm. |

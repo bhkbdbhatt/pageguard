@@ -28,6 +28,11 @@ COPY tools/browser-renderer /app/tools/browser-renderer
 
 # Install the headless browser. This is the heavy step; comment it out (and
 # unset PAGEGUARD_BROWSER_CMD) for a slim, HTTP-only image.
+#
+# The build runs as root but the runtime runs as `node`, so a browser cache in
+# /root/.cache/ms-playwright would be invisible at runtime. Pin the shared path
+# here and keep it in the runtime ENV below.
+ENV PLAYWRIGHT_BROWSERS_PATH="/ms-playwright"
 RUN cd /app/tools/browser-renderer \
     && npm install --omit=dev --no-audit --no-fund \
     && npx playwright install --with-deps chromium \
@@ -37,7 +42,8 @@ ENV PAGEGUARD_ADDR=":8080" \
     PAGEGUARD_PLUGINS_DIR="/app/plugins" \
     PAGEGUARD_MIGRATIONS_DIR="/app/migrations" \
     PAGEGUARD_BROWSER_CMD="node /app/tools/browser-renderer/index.mjs" \
-    PAGEGUARD_NODE_BIN="node"
+    PAGEGUARD_NODE_BIN="node" \
+    PLAYWRIGHT_BROWSERS_PATH="/ms-playwright"
 
 EXPOSE 8080
 USER node
