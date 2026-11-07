@@ -5,6 +5,8 @@ package service
 
 import (
 	"context"
+	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -64,17 +66,45 @@ func (s *Service) Store() domain.Store { return s.store }
 // Hub exposes the event hub (used by streaming handlers).
 func (s *Service) Hub() *events.Hub { return s.hub }
 
-// CreateProject creates a project.
+// CreateProject creates a project. An explicitly supplied slug must be unique;
+// a generated slug is suffixed when a project with that slug already exists.
 func (s *Service) CreateProject(ctx context.Context, name, slug string) (*domain.Project, error) {
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return nil, fmt.Errorf("name is required")
+	}
+	if slug == "" {
+		slug = s.availableProjectSlug(ctx, slugify(name))
+	}
 	now := time.Now().UTC()
 	p := &domain.Project{ID: domain.NewID(), Name: name, Slug: slug, CreatedAt: now, UpdatedAt: now}
-	if p.Slug == "" {
-		p.Slug = slugify(name)
-	}
 	if err := s.store.CreateProject(ctx, p); err != nil {
 		return nil, err
 	}
 	return p, nil
+}
+
+func (s *Service) availableProjectSlug(ctx context.Context, base string) string {
+	if base == "" {
+		base = "project"
+	}
+	projects, err := s.store.ListProjects(ctx)
+	if err != nil {
+		return base
+	}
+	used := make(map[string]bool, len(projects))
+	for _, p := range projects {
+		used[p.Slug] = true
+	}
+	if !used[base] {
+		return base
+	}
+	for i := 2; ; i++ {
+		candidate := fmt.Sprintf("%s-%d", base, i)
+		if !used[candidate] {
+			return candidate
+		}
+	}
 }
 
 // CreateScan validates and stores a scan definition.

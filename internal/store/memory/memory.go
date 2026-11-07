@@ -4,6 +4,7 @@ package memory
 
 import (
 	"context"
+	"fmt"
 	"sort"
 	"sync"
 	"time"
@@ -73,6 +74,11 @@ var _ domain.Store = (*Store)(nil)
 func (s *Store) CreateProject(_ context.Context, p *domain.Project) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	for id, existing := range s.projects {
+		if existing.Slug == p.Slug && id != p.ID {
+			return fmt.Errorf("%w: project slug %q already exists", domain.ErrConflict, p.Slug)
+		}
+	}
 	cp := *p
 	s.projects[p.ID] = &cp
 	return nil

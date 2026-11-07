@@ -2,6 +2,7 @@ package service_test
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
@@ -19,6 +20,31 @@ func newService(t *testing.T) (*service.Service, *domain.Project) {
 		t.Fatalf("create project: %v", err)
 	}
 	return svc, project
+}
+
+func TestCreateProjectDeduplicatesGeneratedSlug(t *testing.T) {
+	svc := service.New(memory.New(), events.NewHub(), nil)
+	ctx := context.Background()
+
+	first, err := svc.CreateProject(ctx, "Acme Commerce", "")
+	if err != nil {
+		t.Fatalf("first create: %v", err)
+	}
+	if first.Slug != "acme-commerce" {
+		t.Fatalf("first slug = %q, want acme-commerce", first.Slug)
+	}
+
+	second, err := svc.CreateProject(ctx, "Acme Commerce", "")
+	if err != nil {
+		t.Fatalf("second create: %v", err)
+	}
+	if second.Slug != "acme-commerce-2" {
+		t.Fatalf("second slug = %q, want acme-commerce-2", second.Slug)
+	}
+
+	if _, err := svc.CreateProject(ctx, "Explicit", "acme-commerce"); !errors.Is(err, domain.ErrConflict) {
+		t.Fatalf("explicit duplicate err = %v, want ErrConflict", err)
+	}
 }
 
 func TestScheduleLifecycle(t *testing.T) {

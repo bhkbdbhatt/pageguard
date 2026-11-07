@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
@@ -119,6 +120,11 @@ func notFound(err error) error {
 	return err
 }
 
+func isUniqueViolation(err error) bool {
+	var pgErr *pgconn.PgError
+	return errors.As(err, &pgErr) && pgErr.Code == "23505"
+}
+
 func marshal(v any) ([]byte, error) {
 	if v == nil {
 		return nil, nil
@@ -152,6 +158,9 @@ func (s *Store) CreateProject(ctx context.Context, p *domain.Project) error {
 		ON CONFLICT (id) DO UPDATE
 		  SET name = EXCLUDED.name, slug = EXCLUDED.slug, updated_at = EXCLUDED.updated_at`,
 		toUUID(p.ID), p.Name, p.Slug, p.CreatedAt, p.UpdatedAt)
+	if err != nil && isUniqueViolation(err) {
+		return fmt.Errorf("%w: project slug %q already exists", domain.ErrConflict, p.Slug)
+	}
 	return err
 }
 
