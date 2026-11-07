@@ -123,6 +123,7 @@ captured `window.dataLayer` / `digitalData` payloads.
 {
   "schemaVersion": "1.0.0",
   "journey": "Checkout flow",
+  "engine": "playwright (chromium 141.0.7390.37)",
   "startedAt": "2026-01-01T00:00:00Z",
   "finishedAt": "2026-01-01T00:00:12Z",
   "durationMs": 12000,
@@ -155,6 +156,9 @@ captured `window.dataLayer` / `digitalData` payloads.
 }
 ```
 
+- `engine` records the browser runtime that actually opened the session, including
+  the Chromium version reported by the worker. It is absent only for old runs or
+  custom sessions that do not expose runtime metadata.
 - `status` is `pass`, `fail` (a check failed) or `error` (the action itself
   threw, e.g. a timeout). An `error` stops the run — the session is no longer in
   a known-good state.
@@ -203,7 +207,7 @@ existing one-shot render. A request without a `cmd` field is a legacy render;
 with one it is a session command:
 
 ```
-{"cmd":"open","opts":{...}}   -> {"ok":true}
+{"cmd":"open","opts":{...}}   -> {"ok":true,"engine":"playwright","browser":"chromium","version":"..."}
 {"cmd":"step","step":{...}}   -> {"ok":true,"state":{...}}
 {"cmd":"screenshot"}          -> {"ok":true,"data":"<base64 png>"}
 {"cmd":"close"}               -> {"ok":true}
@@ -211,17 +215,27 @@ with one it is a session command:
 
 The worker keeps requests, console messages and the browser context alive across
 steps. The Go side slices the cumulative request/console lists to compute each
-step's diff.
+step's diff. The `open` response identifies the runtime that actually launched
+the browser; the engine copies it into `JourneyReport.engine`.
 
 ## Wiring
 
-Like `tagpolicy`, the journey engine is intentionally decoupled from run
-execution. Remaining Module 4 work to make journeys first-class:
+Journeys are first-class in the service, API and dashboard:
 
-1. Migration `0002`: add `journey_steps` and `journey_runs` (the `journeys`
-   table already stores a journey's `steps` as `jsonb`).
-2. Persist step results and stream them over the existing SSE/WS endpoints.
-3. API: `POST /api/v1/journeys`, `POST /api/v1/journeys/{id}/runs`.
+- `migrations/0004_features.sql` adds `journey_runs`; the `journeys` table stores
+  the definition and steps as `jsonb`.
+- `internal/service/features_journeys.go` executes a journey in the background and
+  persists the full `JourneyReport` (status, step results, checks, diffs,
+  screenshots and engine).
+- API: `POST /api/v1/journeys`, `GET /api/v1/journeys`,
+  `POST /api/v1/journeys/{id}/runs`, `GET /api/v1/journeys/{id}/runs` and
+  `GET /api/v1/journey-runs/{id}`.
+- `web/app/journeys` lists runs, shows the browser runtime that executed each
+  run, and renders step-level evidence (checks, network/console diffs,
+  data-layer events and screenshots).
+
+Run progress is currently polled by the dashboard; SSE/WS step streaming remains
+future work.
 
 ## Testing
 

@@ -53,6 +53,7 @@ func fullReport() *Report {
 	return &Report{
 		SchemaVersion: ReportSchemaVersion,
 		Journey:       "full",
+		Engine:        "playwright (chromium test)",
 		StartedAt:     now,
 		FinishedAt:    now,
 		DurationMs:    1,

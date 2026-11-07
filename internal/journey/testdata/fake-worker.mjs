@@ -59,7 +59,7 @@ rl.on("line", (line) => {
   }
   switch (req.cmd) {
     case "open":
-      write({ ok: true });
+      write({ ok: true, engine: "playwright", browser: "chromium", version: "test-1" });
       return;
     case "close":
       write({ ok: true });

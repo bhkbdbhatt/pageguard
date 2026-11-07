@@ -34,7 +34,7 @@ func baseJourney() *Journey {
 }
 
 func TestEngineRunPass(t *testing.T) {
-	factory := &FakeFactory{Session: &FakeSession{States: []*PageState{
+	factory := &FakeFactory{Session: &FakeSession{Engine: "playwright (chromium test)", States: []*PageState{
 		{
 			URL: "https://acme.test/", FinalURL: "https://acme.test/", Status: 200,
 			Requests:  []domain.NetworkRequest{req("https://connect.facebook.net/en_US/fbevents.js", "connect.facebook.net")},
@@ -58,6 +58,9 @@ func TestEngineRunPass(t *testing.T) {
 	}
 	if rep.Summary.Steps != 2 || rep.Summary.Passed != 2 || rep.Summary.Failed != 0 {
 		t.Errorf("summary = %+v", rep.Summary)
+	}
+	if rep.Engine != "playwright (chromium test)" {
+		t.Errorf("engine = %q", rep.Engine)
 	}
 	if !factory.Session.Closed() {
 		t.Error("session not closed")

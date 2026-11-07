@@ -32,14 +32,18 @@ const (
 
 // Report is the step-by-step result of running a journey.
 type Report struct {
-	SchemaVersion string       `json:"schemaVersion"`
-	Journey       string       `json:"journey"`
-	StartedAt     time.Time    `json:"startedAt"`
-	FinishedAt    time.Time    `json:"finishedAt"`
-	DurationMs    int64        `json:"durationMs"`
-	Passed        bool         `json:"passed"`
-	Summary       Summary      `json:"summary"`
-	Steps         []StepResult `json:"steps"`
+	SchemaVersion string `json:"schemaVersion"`
+	Journey       string `json:"journey"`
+	// Engine identifies the browser runtime that executed the run, e.g.
+	// "playwright (chromium 141.0.7390.37)". It is empty for reports produced
+	// by sessions that do not advertise an engine.
+	Engine     string       `json:"engine,omitempty"`
+	StartedAt  time.Time    `json:"startedAt"`
+	FinishedAt time.Time    `json:"finishedAt"`
+	DurationMs int64        `json:"durationMs"`
+	Passed     bool         `json:"passed"`
+	Summary    Summary      `json:"summary"`
+	Steps      []StepResult `json:"steps"`
 }
 
 // Summary aggregates the step outcomes.

@@ -16,7 +16,8 @@
 // tester (internal/journey). A session keeps one browser context alive across
 // steps so cookies, storage and the DOM persist:
 //
-//   {"cmd":"open","opts":{...}}   -> {"ok":true}
+//   {"cmd":"open","opts":{...}}   -> {"ok":true,"engine":"playwright",
+//                                    "browser":"chromium","version":"..."}
 //   {"cmd":"step","step":{...}}   -> {"ok":true,"state":{...}}
 //   {"cmd":"screenshot"}          -> {"ok":true,"data":"<base64 png>"}
 //   {"cmd":"close"}               -> {"ok":true}
@@ -523,6 +524,7 @@ async function openSession(opts) {
   page.on("pageerror", (err) => consoleMessages.push({ level: "error", text: String(err) }));
 
   session = {
+    browser: b,
     context,
     page,
     requests,
@@ -643,10 +645,16 @@ async function closeSession() {
 
 async function handleCommand(req) {
   switch (req.cmd) {
-    case "open":
-      await openSession(req.opts || {});
-      write({ ok: true });
+    case "open": {
+      const opened = await openSession(req.opts || {});
+      write({
+        ok: true,
+        engine: "playwright",
+        browser: "chromium",
+        version: opened.browser.version(),
+      });
       return true;
+    }
     case "step": {
       const state = await performStep(req.step || {});
       write({ ok: true, state });

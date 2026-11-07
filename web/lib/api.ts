@@ -761,6 +761,50 @@ export interface JourneyInput {
   steps?: JourneyStep[];
 }
 
+export type JourneyStepStatus = "pass" | "fail" | "error";
+
+export interface JourneyCheckResult {
+  name: string;
+  status: "pass" | "fail";
+  message?: string;
+  expected?: unknown;
+  actual?: unknown;
+}
+
+export interface JourneyStepDiff {
+  newRequests?: NetworkRequest[];
+  newConsole?: ConsoleMessage[];
+  newCookies?: Cookie[];
+  newTags?: Tag[];
+  newEvents?: string[];
+}
+
+export interface JourneyStepResult {
+  index: number;
+  action: string;
+  selector?: string;
+  description?: string;
+  status: JourneyStepStatus;
+  message?: string;
+  error?: string;
+  durationMs: number;
+  checks?: JourneyCheckResult[];
+  diff?: JourneyStepDiff;
+  screenshot?: string;
+}
+
+export interface JourneyReport {
+  schemaVersion: string;
+  journey: string;
+  engine?: string;
+  startedAt: string;
+  finishedAt: string;
+  durationMs: number;
+  passed: boolean;
+  summary: { steps: number; passed: number; failed: number };
+  steps: JourneyStepResult[];
+}
+
 export interface JourneyRun {
   id: string;
   journeyId: string;
@@ -770,7 +814,7 @@ export interface JourneyRun {
   stepsTotal: number;
   durationMs: number;
   error?: string;
-  report?: unknown;
+  report?: JourneyReport;
   startedAt: string;
   finishedAt?: string;
   createdAt: string;

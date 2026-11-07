@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"os/exec"
+	"strings"
 	"sync"
 
 	"github.com/pageguard/pageguard/internal/domain"
@@ -56,8 +57,8 @@ func (f *PlaywrightSessionFactory) Open(ctx context.Context, opts SessionOptions
 	sc := bufio.NewScanner(stdout)
 	sc.Buffer(make([]byte, 0, 1<<20), 32<<20)
 
-	s := &playwrightSession{cmd: cmd, stdin: stdin, stdout: sc}
-	if err := s.call(ctx, workerRequest{Cmd: "open", Opts: &workerSessionOpts{
+	s := &playwrightSession{cmd: cmd, stdin: stdin, stdout: sc, engine: "playwright"}
+	resp, err := s.roundTrip(ctx, workerRequest{Cmd: "open", Opts: &workerSessionOpts{
 		UserAgent:            opts.UserAgent,
 		Width:                opts.Viewport.Width,
 		Height:               opts.Viewport.Height,
@@ -66,10 +67,12 @@ func (f *PlaywrightSessionFactory) Open(ctx context.Context, opts SessionOptions
 		IgnoreHTTPSErrors:    opts.IgnoreHTTPSErrors,
 		CaptureDataLayer:     opts.captureDataLayer(),
 		GlobalPrivacyControl: opts.GlobalPrivacyControl,
-	}}); err != nil {
+	}})
+	if err != nil {
 		_ = s.Close()
 		return nil, err
 	}
+	s.engine = engineLabel(resp)
 	return s, nil
 }
 
@@ -79,6 +82,17 @@ type playwrightSession struct {
 	stdin  io.WriteCloser
 	stdout *bufio.Scanner
 	closed bool
+	engine string
+}
+
+// EngineName identifies the browser runtime behind this session.
+func (s *playwrightSession) EngineName() string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.engine == "" {
+		return "playwright"
+	}
+	return s.engine
 }
 
 type workerRequest struct {
@@ -142,6 +156,27 @@ type workerResponse struct {
 	State   *workerState `json:"state,omitempty"`
 	Data    string       `json:"data,omitempty"`
 	Clicked string       `json:"clicked,omitempty"`
+	Engine  string       `json:"engine,omitempty"`
+	Browser string       `json:"browser,omitempty"`
+	Version string       `json:"version,omitempty"`
+}
+
+// engineLabel turns the worker's open response into a human-readable runtime
+// label, falling back to "playwright" for older workers that do not report it.
+func engineLabel(resp *workerResponse) string {
+	label := strings.TrimSpace(resp.Engine)
+	if label == "" {
+		label = "playwright"
+	}
+	browser := strings.TrimSpace(resp.Browser)
+	version := strings.TrimSpace(resp.Version)
+	switch {
+	case browser != "" && version != "":
+		label += " (" + browser + " " + version + ")"
+	case browser != "":
+		label += " (" + browser + ")"
+	}
+	return label
 }
 
 type workerState struct {
@@ -210,11 +245,6 @@ func (s *playwrightSession) Close() error {
 	return nil
 }
 
-func (s *playwrightSession) call(ctx context.Context, req workerRequest) error {
-	_, err := s.roundTrip(ctx, req)
-	return err
-}
-
 func (s *playwrightSession) roundTrip(ctx context.Context, req workerRequest) (*workerResponse, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -264,4 +294,5 @@ func (s *playwrightSession) roundTrip(ctx context.Context, req workerRequest) (*
 var (
 	_ SessionFactory = (*PlaywrightSessionFactory)(nil)
 	_ ConsentClicker = (*playwrightSession)(nil)
+	_ EngineNamer    = (*playwrightSession)(nil)
 )

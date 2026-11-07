@@ -26,6 +26,10 @@ func TestPlaywrightSessionAgainstFakeWorker(t *testing.T) {
 	}
 	defer sess.Close()
 
+	if name := sess.(EngineNamer).EngineName(); name != "playwright (chromium test-1)" {
+		t.Errorf("engine = %q", name)
+	}
+
 	st, err := sess.Perform(ctx, Step{Action: ActionNavigate, Value: "https://acme.test/"})
 	if err != nil {
 		t.Fatalf("Perform navigate: %v", err)

@@ -27,6 +27,7 @@ import {
   type Journey,
   type JourneyRun,
   type JourneyStep,
+  type JourneyStepResult,
 } from "../../lib/api";
 import { duration, formatDate, formatNumber, formatPercent, timeAgo } from "../../lib/format";
 
@@ -45,6 +46,127 @@ const RUN_TONES: Record<string, "emerald" | "rose" | "sky" | "slate"> = {
   canceled: "slate",
 };
 
+const STEP_TONES: Record<JourneyStepResult["status"], "emerald" | "rose" | "amber"> = {
+  pass: "emerald",
+  fail: "rose",
+  error: "amber",
+};
+
+function engineText(run: JourneyRun): string {
+  if (run.report?.engine) return run.report.engine;
+  if (run.status === "running") return "starting browser";
+  if ((run.error ?? "").toLowerCase().includes("browser worker command not configured")) {
+    return "Playwright not configured";
+  }
+  return "engine not recorded";
+}
+
+function needsBrowserHint(run: JourneyRun): boolean {
+  return (run.error ?? "").toLowerCase().includes("browser worker command not configured");
+}
+
+function StepEvidence({ step }: { step: JourneyStepResult }) {
+  const checks = step.checks ?? [];
+  const requests = step.diff?.newRequests ?? [];
+  const consoleMessages = step.diff?.newConsole ?? [];
+  const cookies = step.diff?.newCookies ?? [];
+  const tags = step.diff?.newTags ?? [];
+  const events = step.diff?.newEvents ?? [];
+  const hasEvidence =
+    requests.length + consoleMessages.length + cookies.length + tags.length + events.length > 0;
+
+  return (
+    <li className="rounded-lg border border-slate-800 bg-slate-950/40 p-3">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="flex h-6 w-6 items-center justify-center rounded border border-slate-700 bg-slate-900 text-[10px] text-slate-400">
+          {step.index + 1}
+        </span>
+        <Pill tone={STEP_TONES[step.status]}>{step.status}</Pill>
+        <span className="text-xs font-semibold text-slate-200">{step.action}</span>
+        {step.selector && (
+          <code className="mono rounded bg-slate-900 px-1.5 py-0.5 text-[10px] text-slate-400">{step.selector}</code>
+        )}
+        <span className="ml-auto text-[10px] text-slate-500">{step.durationMs} ms</span>
+      </div>
+      {step.description && <p className="mt-1 text-[11px] text-slate-500">{step.description}</p>}
+      {step.message && (
+        <p className={`mt-1 text-[11px] ${step.status === "pass" ? "text-slate-400" : "text-rose-300"}`}>
+          {step.message}
+        </p>
+      )}
+      {step.error && <p className="mono mt-1 break-words text-[11px] text-rose-300">{step.error}</p>}
+      {checks.length > 0 && (
+        <ul className="mt-2 space-y-1">
+          {checks.map((check, index) => (
+            <li key={`${check.name}-${index}`} className="flex flex-wrap items-center gap-2 text-[10px]">
+              <Pill tone={check.status === "pass" ? "emerald" : "rose"}>{check.status}</Pill>
+              <span className="mono text-slate-300">{check.name}</span>
+              {check.message && <span className="text-slate-500">{check.message}</span>}
+            </li>
+          ))}
+        </ul>
+      )}
+      {hasEvidence && (
+        <div className="mt-2 flex flex-wrap gap-1.5 text-[10px]">
+          {tags.map((tag) => (
+            <span key={`tag-${tag.id}`} className="rounded border border-indigo-800/60 bg-indigo-950/40 px-1.5 py-0.5 text-indigo-300">
+              tag {tag.id}
+            </span>
+          ))}
+          {cookies.map((cookie) => (
+            <span key={`cookie-${cookie.name}`} className="rounded border border-sky-800/60 bg-sky-950/40 px-1.5 py-0.5 text-sky-300">
+              cookie {cookie.name}
+            </span>
+          ))}
+          {events.map((event) => (
+            <span key={`event-${event}`} className="rounded border border-emerald-800/60 bg-emerald-950/40 px-1.5 py-0.5 text-emerald-300">
+              event {event}
+            </span>
+          ))}
+          {requests.length > 0 && (
+            <span className="rounded border border-slate-700 bg-slate-900 px-1.5 py-0.5 text-slate-400">
+              {requests.length} new request{requests.length === 1 ? "" : "s"}
+            </span>
+          )}
+          {consoleMessages.length > 0 && (
+            <span className="rounded border border-amber-800/60 bg-amber-950/40 px-1.5 py-0.5 text-amber-300">
+              {consoleMessages.length} console message{consoleMessages.length === 1 ? "" : "s"}
+            </span>
+          )}
+        </div>
+      )}
+      {requests.length > 0 && (
+        <details className="mt-2 text-[10px] text-slate-500">
+          <summary className="cursor-pointer text-slate-400">Network evidence</summary>
+          <ul className="mt-1 space-y-0.5">
+            {requests.slice(0, 8).map((request, index) => (
+              <li key={`${request.method}-${request.url}-${index}`} className="mono truncate">
+                {request.method} {request.url}
+                {request.status ? ` (${request.status})` : ""}
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
+      {consoleMessages.length > 0 && (
+        <details className="mt-1 text-[10px] text-slate-500">
+          <summary className="cursor-pointer text-slate-400">Console evidence</summary>
+          <ul className="mt-1 space-y-0.5">
+            {consoleMessages.slice(0, 8).map((message, index) => (
+              <li key={`${message.level}-${index}`} className="mono truncate">
+                {message.level}: {message.text}
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
+      {step.screenshot && (
+        <p className="mono mt-2 break-all text-[10px] text-amber-300">screenshot: {step.screenshot}</p>
+      )}
+    </li>
+  );
+}
+
 type StepDraft = {
   action: JourneyStep["action"];
   selector: string;
@@ -59,6 +181,7 @@ export default function JourneysPage() {
   const [journeys, setJourneys] = useState<Journey[]>([]);
   const [runs, setRuns] = useState<JourneyRun[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedRunId, setSelectedRunId] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -125,6 +248,7 @@ export default function JourneysPage() {
   }, [journeys, query]);
 
   const latest = runs[0];
+  const detailRun = runs.find((run) => run.id === selectedRunId) ?? latest ?? null;
   const passRate = runs.length > 0 ? (runs.filter((run) => run.status === "passed").length / runs.length) * 100 : 0;
   const averageDuration = runs.length > 0 ? runs.reduce((sum, run) => sum + run.durationMs, 0) / runs.length : 0;
 
@@ -158,6 +282,7 @@ export default function JourneysPage() {
     try {
       const run = await runJourney(journey.id);
       setRuns((current) => [run, ...current]);
+      setSelectedRunId(run.id);
       setError(null);
       window.setTimeout(() => {
         void getJourneyRun(run.id).then((fresh) => setRuns((current) => current.map((item) => (item.id === fresh.id ? fresh : item)))).catch(() => undefined);
@@ -337,11 +462,12 @@ export default function JourneysPage() {
                       <EmptyState icon="play" title="No runs yet" description="Run this journey to capture step-level results." />
                     ) : (
                       <div className="overflow-x-auto">
-                        <table className="w-full min-w-[640px] text-xs" aria-label="Journey runs">
+                        <table className="w-full min-w-[760px] text-xs" aria-label="Journey runs">
                           <thead className="table-head">
                             <tr>
                               <th scope="col" className="px-4 py-2.5">Run</th>
                               <th scope="col" className="px-4 py-2.5">Status</th>
+                              <th scope="col" className="px-4 py-2.5">Engine</th>
                               <th scope="col" className="px-4 py-2.5">Steps</th>
                               <th scope="col" className="px-4 py-2.5">Duration</th>
                               <th scope="col" className="px-4 py-2.5">Started</th>
@@ -349,12 +475,27 @@ export default function JourneysPage() {
                           </thead>
                           <tbody>
                             {runs.map((run) => (
-                              <tr key={run.id} className="table-row">
+                              <tr
+                                key={run.id}
+                                className={`table-row cursor-pointer ${detailRun?.id === run.id ? "bg-slate-900/70" : ""}`}
+                                onClick={() => setSelectedRunId(run.id)}
+                              >
                                 <td className="px-4 py-3">
-                                  <div className="mono text-[11px] text-slate-300">{run.id.slice(0, 10)}</div>
+                                  <button
+                                    type="button"
+                                    className="flex items-center gap-1 text-left"
+                                    onClick={() => setSelectedRunId(run.id)}
+                                    aria-pressed={detailRun?.id === run.id}
+                                  >
+                                    <Icon name="chevron-right" className="h-3 w-3 text-slate-600" />
+                                    <span className="mono text-[11px] text-slate-300">{run.id.slice(0, 10)}</span>
+                                  </button>
                                   {run.error && <div className="mt-0.5 max-w-[260px] truncate text-[10px] text-rose-300">{run.error}</div>}
                                 </td>
                                 <td className="px-4 py-3"><Pill tone={RUN_TONES[run.status] ?? "slate"}>{run.status}</Pill></td>
+                                <td className="px-4 py-3">
+                                  <span className="mono text-[10px] text-slate-400">{run.report?.engine ?? (run.status === "running" ? "starting" : "—")}</span>
+                                </td>
                                 <td className="px-4 py-3 text-slate-400">{run.stepsPassed}/{run.stepsTotal}</td>
                                 <td className="px-4 py-3 text-slate-400">{duration(Math.round(run.durationMs / 1000))}</td>
                                 <td className="px-4 py-3 text-[11px] text-slate-500">{formatDate(run.startedAt)}</td>
@@ -365,6 +506,61 @@ export default function JourneysPage() {
                       </div>
                     )}
                   </Card>
+
+                  {detailRun && (
+                    <Card>
+                      <CardHeader
+                        title="Run evidence"
+                        subtitle={`${detailRun.id.slice(0, 10)} · started ${formatDate(detailRun.startedAt)}`}
+                        right={
+                          <div className="flex flex-wrap items-center gap-2">
+                            <Pill tone={RUN_TONES[detailRun.status] ?? "slate"}>{detailRun.status}</Pill>
+                            <Pill tone={detailRun.report?.engine ? "indigo" : "slate"}>{engineText(detailRun)}</Pill>
+                          </div>
+                        }
+                      />
+                      <div className="space-y-3 p-4">
+                        {detailRun.report ? (
+                          <>
+                            <div className="flex flex-wrap items-center gap-3 rounded-lg border border-indigo-900/50 bg-indigo-950/20 px-3 py-2">
+                              <span className="text-indigo-300"><Icon name="globe" className="h-4 w-4" /></span>
+                              <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Browser runtime</span>
+                              <span className="mono text-[11px] text-indigo-200">{detailRun.report.engine ?? "not reported"}</span>
+                              <span className="ml-auto text-[10px] text-slate-400">
+                                {detailRun.report.summary.passed}/{detailRun.report.summary.steps} steps passed · {duration(Math.round(detailRun.report.durationMs / 1000))}
+                              </span>
+                            </div>
+                            <ol className="space-y-2">
+                              {detailRun.report.steps.map((step) => (
+                                <StepEvidence key={`${step.index}-${step.action}`} step={step} />
+                              ))}
+                            </ol>
+                          </>
+                        ) : detailRun.status === "running" ? (
+                          <Loading label="Waiting for the browser to finish" />
+                        ) : (
+                          <div className="rounded-lg border border-rose-900/50 bg-rose-950/20 p-3">
+                            <p className="text-[11px] text-rose-200">
+                              {detailRun.error || "Run failed before producing step evidence."}
+                            </p>
+                            {needsBrowserHint(detailRun) && (
+                              <p className="mt-2 text-[11px] text-slate-400">
+                                Start the API with{" "}
+                                <code className="mono rounded bg-slate-900 px-1.5 py-0.5 text-slate-200">
+                                  --browser-cmd &quot;node tools/browser-renderer/index.mjs&quot;
+                                </code>{" "}
+                                and install Chromium with{" "}
+                                <code className="mono rounded bg-slate-900 px-1.5 py-0.5 text-slate-200">
+                                  npx playwright install chromium
+                                </code>
+                                .
+                              </p>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </Card>
+                  )}
                 </>
               )}
             </div>

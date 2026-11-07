@@ -40,17 +40,32 @@ type SessionFactory interface {
 	Open(ctx context.Context, opts SessionOptions) (Session, error)
 }
 
+// EngineNamer is implemented by sessions that can identify the browser runtime
+// that executed the journey (e.g. Playwright and its Chromium version).
+type EngineNamer interface {
+	EngineName() string
+}
+
 // FakeSession is a scriptable Session for tests. It returns States in order for
 // successive Perform calls; Errors lets a specific call fail.
 type FakeSession struct {
 	States         []*PageState
 	Errors         map[int]error
 	ScreenshotData []byte
+	// Engine is reported through EngineNamer when non-empty.
+	Engine string
 
 	mu        sync.Mutex
 	idx       int
 	performed []Step
 	closed    bool
+}
+
+// EngineName returns the configured engine label.
+func (f *FakeSession) EngineName() string {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.Engine
 }
 
 // Perform returns the next scripted state (or error) and records the step.

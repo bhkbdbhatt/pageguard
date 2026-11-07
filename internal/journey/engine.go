@@ -65,6 +65,9 @@ func (e *Engine) Run(ctx context.Context, j *Journey, opts RunOptions) (*Report,
 		Journey:       j.Name,
 		StartedAt:     time.Now().UTC(),
 	}
+	if namer, ok := sess.(EngineNamer); ok {
+		report.Engine = strings.TrimSpace(namer.EngineName())
+	}
 
 	var prev stepState
 	for i := range j.Steps {

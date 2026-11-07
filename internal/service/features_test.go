@@ -2,12 +2,16 @@ package service_test
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"os/exec"
+	"path/filepath"
 	"testing"
 	"time"
 
 	"github.com/pageguard/pageguard/internal/domain"
 	"github.com/pageguard/pageguard/internal/events"
+	"github.com/pageguard/pageguard/internal/journey"
 	"github.com/pageguard/pageguard/internal/service"
 	"github.com/pageguard/pageguard/internal/store/memory"
 )
@@ -182,6 +186,66 @@ func TestJourneyCreationAndListing(t *testing.T) {
 	})
 	if err == nil {
 		t.Fatal("expected unsupported action to be rejected")
+	}
+}
+
+func TestRunJourneyPersistsEngineEvidence(t *testing.T) {
+	if _, err := exec.LookPath("node"); err != nil {
+		t.Skip("node not installed")
+	}
+	worker := filepath.ToSlash(filepath.Join("..", "journey", "testdata", "fake-worker.mjs"))
+	svc := service.New(memory.New(), events.NewHub(), nil,
+		service.WithBrowserCommand([]string{"node", worker}))
+	ctx := context.Background()
+	project, err := svc.CreateProject(ctx, "Acme", "acme")
+	if err != nil {
+		t.Fatalf("create project: %v", err)
+	}
+
+	j, err := svc.CreateJourney(ctx, service.JourneyInput{
+		ProjectID: project.ID, Name: "Checkout", BaseURL: "https://example.com/",
+		Steps: []domain.JourneyStep{
+			{Order: 1, Action: "navigate", Value: "https://example.com/"},
+			{Order: 2, Action: "click", Selector: "#buy"},
+		},
+	})
+	if err != nil {
+		t.Fatalf("create journey: %v", err)
+	}
+
+	run, err := svc.RunJourney(ctx, j.ID)
+	if err != nil {
+		t.Fatalf("run journey: %v", err)
+	}
+
+	var final *domain.JourneyRun
+	deadline := time.Now().Add(15 * time.Second)
+	for final == nil || final.Status == "running" {
+		if time.Now().After(deadline) {
+			t.Fatal("journey run did not finish")
+		}
+		time.Sleep(25 * time.Millisecond)
+		final, err = svc.GetJourneyRun(ctx, run.ID)
+		if err != nil {
+			t.Fatalf("get journey run: %v", err)
+		}
+	}
+	if final.Status != "passed" {
+		t.Fatalf("status = %q, error = %q", final.Status, final.Error)
+	}
+	if final.StepsPassed != 2 || final.StepsTotal != 2 {
+		t.Fatalf("steps = %d/%d", final.StepsPassed, final.StepsTotal)
+	}
+
+	var report journey.Report
+	if err := json.Unmarshal(final.Report, &report); err != nil {
+		t.Fatalf("decode report: %v", err)
+	}
+	if report.Engine != "playwright (chromium test-1)" {
+		t.Fatalf("engine = %q", report.Engine)
+	}
+	if len(report.Steps) != 2 {
+		t.Fatalf("report steps = %d", len(report.Steps))
 	}
 }
 

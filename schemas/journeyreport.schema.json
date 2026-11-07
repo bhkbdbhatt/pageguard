@@ -9,6 +9,10 @@
   "properties": {
     "schemaVersion": { "type": "string" },
     "journey": { "type": "string" },
+    "engine": {
+      "type": "string",
+      "description": "Browser runtime that executed the journey, e.g. playwright (chromium 141.0.7390.37)."
+    },
     "startedAt": { "type": "string", "format": "date-time" },
     "finishedAt": { "type": "string", "format": "date-time" },
     "durationMs": { "type": "integer" },
